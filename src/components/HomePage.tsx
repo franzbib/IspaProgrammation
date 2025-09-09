@@ -372,30 +372,61 @@ export default function HomePage() {
       <OfflineExportPanel />
       
       {/* Cloud Sync Panel */}
+      
+      {/* Synchronisation Info */}
+      <section className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/30 p-10">
+        <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">
+          🔄 Synchronisation Automatique
+        </h2>
         
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <h5 className="font-semibold text-blue-800 mb-2">🔧 Réinitialisation Complète</h5>
-          <p className="text-sm text-blue-700 mb-3">
-            Si vous rencontrez des problèmes de synchronisation ou des étiquettes manquantes, 
-            vous pouvez réinitialiser toutes les progressions avec les données par défaut :
-          </p>
-          <button
-            onClick={() => {
-              if (confirm('⚠️ ATTENTION : Cette action va réinitialiser TOUTES les progressions avec les données par défaut. Toutes vos modifications seront perdues. Continuer ?')) {
-                // Importer l'utilitaire d'initialisation
-                import('../utils/initializeProgressions').then(({ initializeAllProgressions }) => {
-                  initializeAllProgressions();
-                  alert('✅ Toutes les progressions ont été réinitialisées. Rechargez la page.');
-                  window.location.reload();
-                });
-              }
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
-          >
-            🔄 Réinitialiser Toutes les Progressions
-          </button>
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <p className="text-lg text-gray-600 leading-relaxed">
+              <strong>✅ Nouveau système activé !</strong> Vos progressions sont maintenant 
+              automatiquement synchronisées entre tous les utilisateurs et appareils.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-200">
+              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="text-green-600">✅</span>
+                Pour les nouveaux utilisateurs
+              </h3>
+              <ul className="space-y-2 text-gray-600">
+                <li>• Chargement automatique de la dernière version</li>
+                <li>• Toutes les étiquettes et organisations préservées</li>
+                <li>• Aucune action manuelle requise</li>
+              </ul>
+            </div>
+            
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 rounded-2xl border border-blue-200">
+              <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="text-blue-600">🔄</span>
+                Pour les utilisateurs existants
+              </h3>
+              <ul className="space-y-2 text-gray-600">
+                <li>• Sauvegarde automatique dans le cloud</li>
+                <li>• Synchronisation en temps réel</li>
+                <li>• Vos modifications visibles par tous</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="mt-8 p-6 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl border border-yellow-200">
+            <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+              <span className="text-orange-600">🎯</span>
+              Comment ça marche
+            </h4>
+            <ol className="space-y-2 text-gray-600">
+              <li><strong>1.</strong> Chaque modification est sauvegardée localement ET dans le cloud</li>
+              <li><strong>2.</strong> Les nouveaux utilisateurs chargent automatiquement la version cloud</li>
+              <li><strong>3.</strong> La version la plus récente est toujours utilisée</li>
+              <li><strong>4.</strong> Fonctionne même hors ligne (sync à la reconnexion)</li>
+            </ol>
+          </div>
         </div>
-      <CloudSyncPanel />
+      </section>
     </div>
   );
 }

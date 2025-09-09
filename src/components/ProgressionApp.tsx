@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Calendar, FileDown, FileUp, FileText, Printer, RotateCcw, Trash2 } from 'lucide-react';
 import { sharedStateManager } from '../utils/sharedState';
+import { simpleCloudSync } from '../utils/simpleCloudSync';
 
 interface Row {
   label: string;
@@ -43,25 +44,55 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
 
   // Initialize with default data
   useEffect(() => {
-    const savedState = localStorage.getItem(config.storageKey);
-    if (savedState) {
-      try {
-        const state = JSON.parse(savedState);
-        if (state.version && state.rows && Array.isArray(state.rows) && state.cells) {
-          restoreState(state);
-        } else {
-          console.warn('Données corrompues détectées, initialisation par défaut');
-          initializeWithDefaults();
-        }
-      } catch (error) {
-        console.warn('Erreur de parsing, initialisation par défaut');
-        initializeWithDefaults();
-      }
-    } else {
-      initializeWithDefaults();
-    }
+    loadInitialData();
   }, [config.storageKey]);
 
+  const loadInitialData = async () => {
+    try {
+      // 1. Charger les données locales
+      const localData = localStorage.getItem(config.storageKey);
+      let localState = null;
+      let localTimestamp = 0;
+
+      if (localData) {
+        try {
+          localState = JSON.parse(localData);
+          localTimestamp = localState.lastModified || 0;
+        } catch (error) {
+          console.warn('Données locales corrompues');
+        }
+      }
+
+      // 2. Vérifier s'il y a une version plus récente dans le cloud
+      const cloudTimestamp = await simpleCloudSync.getCloudTimestamp(config.storageKey);
+      
+      if (cloudTimestamp > localTimestamp) {
+        // Charger depuis le cloud
+        const cloudData = await simpleCloudSync.loadFromCloud(config.storageKey);
+        if (cloudData && cloudData.rows && cloudData.cells) {
+          console.log('📥 Chargement depuis le cloud:', config.storageKey);
+          restoreState(cloudData);
+          // Sauvegarder localement
+          localStorage.setItem(config.storageKey, JSON.stringify(cloudData));
+          return;
+        }
+      }
+
+      // 3. Utiliser les données locales si elles existent et sont valides
+      if (localState && localState.rows && localState.cells) {
+        restoreState(localState);
+        return;
+      }
+
+      // 4. Initialiser par défaut
+      console.log('🔄 Initialisation par défaut:', config.storageKey);
+      initializeWithDefaults();
+
+    } catch (error) {
+      console.warn('Erreur lors du chargement initial:', error);
+      initializeWithDefaults();
+    }
+  };
   const initializeWithDefaults = () => {
     const defaultRows: Row[] = [
       { label: '01', type: 'week' }, { label: '02', type: 'week' }, { label: '03', type: 'week' },
@@ -189,6 +220,11 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     
     localStorage.setItem(config.storageKey, JSON.stringify(state));
     sharedStateManager.saveToShared(config.storageKey, state);
+    
+    // Sauvegarder dans le cloud en arrière-plan (sans bloquer l'interface)
+    simpleCloudSync.saveToCloud(config.storageKey, state).catch(error => {
+      console.warn('Erreur sauvegarde cloud:', error);
+    });
   };
 
   useEffect(() => {
