@@ -1,14 +1,15 @@
 import React from 'react';
 
-// Système de sauvegarde partagée pour que les modifications soient visibles par tous les utilisateurs
+// Système de sauvegarde partagée amélioré pour synchronisation entre navigateurs
 export interface SharedStateManager {
   saveToShared: (key: string, data: any) => void;
   loadFromShared: (key: string) => any;
   subscribeToChanges: (key: string, callback: (data: any) => void) => () => void;
+  exportAllData: () => string;
+  importAllData: (data: string) => boolean;
 }
 
-// Simulation d'un système de sauvegarde partagée
-// En production, ceci pourrait être remplacé par une base de données ou un service cloud
+// Gestionnaire de sauvegarde locale avec export/import pour synchronisation manuelle
 class LocalSharedStateManager implements SharedStateManager {
   private listeners: Map<string, Set<(data: any) => void>> = new Map();
   private lastModified: Map<string, number> = new Map();
@@ -18,7 +19,8 @@ class LocalSharedStateManager implements SharedStateManager {
     const dataWithTimestamp = {
       ...data,
       lastModified: Date.now(),
-      version: (data.version || 0) + 1
+      version: (data.version || 0) + 1,
+      deviceId: this.getDeviceId()
     };
     
     localStorage.setItem(key, JSON.stringify(dataWithTimestamp));
@@ -92,6 +94,72 @@ class LocalSharedStateManager implements SharedStateManager {
     };
   }
 
+  // Générer un ID unique pour l'appareil/navigateur
+  private getDeviceId(): string {
+    let deviceId = localStorage.getItem('deviceId');
+    if (!deviceId) {
+      deviceId = `device-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem('deviceId', deviceId);
+    }
+    return deviceId;
+  }
+
+  // Exporter toutes les données pour synchronisation manuelle
+  exportAllData(): string {
+    const allData: Record<string, any> = {};
+    const keys = ['progA1A2', 'progA2B1', 'progB1B2', 'progA2Emploi'];
+    
+    keys.forEach(key => {
+      const data = this.loadFromShared(key);
+      if (data) {
+        allData[key] = data;
+      }
+    });
+    
+    return JSON.stringify({
+      exportDate: new Date().toISOString(),
+      deviceId: this.getDeviceId(),
+      version: '1.0',
+      data: allData
+    }, null, 2);
+  }
+
+  // Importer toutes les données
+  importAllData(jsonData: string): boolean {
+    try {
+      const importedData = JSON.parse(jsonData);
+      
+      if (!importedData.data || typeof importedData.data !== 'object') {
+        return false;
+      }
+      
+      Object.entries(importedData.data).forEach(([key, data]) => {
+        if (data && typeof data === 'object') {
+          // Marquer comme importé avec timestamp actuel
+          const dataWithImportInfo = {
+            ...data,
+            lastModified: Date.now(),
+            importedFrom: importedData.deviceId || 'unknown',
+            importedAt: new Date().toISOString()
+          };
+          
+          localStorage.setItem(key, JSON.stringify(dataWithImportInfo));
+          this.lastModified.set(key, dataWithImportInfo.lastModified);
+          
+          // Notifier les listeners
+          const listeners = this.listeners.get(key);
+          if (listeners) {
+            listeners.forEach(callback => callback(dataWithImportInfo));
+          }
+        }
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de l\'importation:', error);
+      return false;
+    }
+  }
   // Méthode utilitaire pour obtenir la dernière modification
   getLastModified(key: string): number {
     return this.lastModified.get(key) || 0;
@@ -157,4 +225,23 @@ export function getModificationSummary(): { key: string; lastModified: Date; has
     lastModified: new Date(sharedStateManager.getLastModified(key)),
     hasRecent: hasRecentChanges(key, 30) // Modifications dans les 30 dernières minutes
   }));
+}
+// Fonctions utilitaires pour la synchronisation manuelle
+export function exportAllProgressions(): string {
+  return sharedStateManager.exportAllData();
+}
+
+export function importAllProgressions(jsonData: string): boolean {
+  return sharedStateManager.importAllData(jsonData);
+}
+
+export function downloadAllProgressions(): void {
+  const data = exportAllProgressions();
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ispa-progressions-sync-${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
 }

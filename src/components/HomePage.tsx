@@ -330,23 +330,39 @@ export default function HomePage() {
               <h4 className="font-semibold text-gray-800 mb-3">✨ Fonctionnalités</h4>
               <ul className="text-sm text-gray-600 space-y-1">
                 <li>• Organisation par glisser-déposer</li>
-                <li>• Sauvegarde partagée en temps réel</li>
+                <li>• Sauvegarde locale automatique</li>
                 <li>• Export Word/PDF par progression</li>
                 <li>• Import/Export JSON global</li>
                 <li>• Étiquettes personnalisables</li>
+                <li>• Synchronisation entre appareils</li>
               </ul>
             </div>
             
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-xl border border-green-200">
               <h4 className="font-semibold text-gray-800 mb-3">👥 Collaboration</h4>
               <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Modifications visibles par tous</li>
+                <li>• Synchronisation manuelle</li>
                 <li>• Sauvegarde automatique</li>
-                <li>• Partage entre enseignants</li>
-                <li>• Historique des modifications</li>
+                <li>• Export/Import pour partage</li>
+                <li>• Suivi des modifications</li>
                 <li>• Interface intuitive</li>
               </ul>
             </div>
+          </div>
+          
+          <div className="mt-8 p-6 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-2xl border border-yellow-200">
+            <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+              🔄 Synchronisation entre Appareils
+            </h4>
+            <p className="text-gray-600 mb-4">
+              Pour synchroniser vos progressions entre différents ordinateurs ou navigateurs :
+            </p>
+            <ol className="text-sm text-gray-600 space-y-2">
+              <li><strong>1.</strong> Sur l'appareil source : utilisez "Export Package Complet" ci-dessous</li>
+              <li><strong>2.</strong> Transférez le fichier JSON vers le nouvel appareil</li>
+              <li><strong>3.</strong> Sur le nouvel appareil : utilisez "Import Package Complet"</li>
+              <li><strong>4.</strong> Vos progressions sont maintenant synchronisées !</li>
+            </ol>
           </div>
         </div>
       </section>

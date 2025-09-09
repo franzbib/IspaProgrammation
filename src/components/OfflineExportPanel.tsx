@@ -1,12 +1,18 @@
 import React, { useRef } from 'react';
-import { Download, Upload, Globe, HardDrive, FileText, Package } from 'lucide-react';
+import { Download, Upload, Globe, HardDrive, FileText, Package, RefreshCw } from 'lucide-react';
 import { downloadOfflinePackage, importOfflinePackage, OfflineExportData } from '../utils/offlineExport';
+import { downloadAllProgressions, importAllProgressions } from '../utils/sharedState';
 
 export default function OfflineExportPanel() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const syncFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImport = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleSyncImport = () => {
+    syncFileInputRef.current?.click();
   };
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,6 +42,32 @@ export default function OfflineExportPanel() {
     }
   };
 
+  const handleSyncFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const jsonData = e.target?.result as string;
+        const success = importAllProgressions(jsonData);
+        
+        if (success) {
+          alert('✅ Synchronisation réussie ! Toutes les progressions ont été mises à jour.');
+          window.location.reload();
+        } else {
+          alert('❌ Erreur lors de la synchronisation. Vérifiez le format du fichier.');
+        }
+      } catch (error) {
+        alert('❌ Fichier de synchronisation invalide.');
+      }
+    };
+    reader.readAsText(file);
+    
+    if (syncFileInputRef.current) {
+      syncFileInputRef.current.value = '';
+    }
+  };
   const downloadInstructions = () => {
     const instructions = `
 # 📋 INSTRUCTIONS - Utilisation Hors Ligne ISPA Progressions
@@ -74,6 +106,13 @@ Pour synchroniser avec d'autres ordinateurs :
 1. Exportez le package complet depuis l'ordinateur source
 2. Importez le package sur l'ordinateur de destination
 
+## 🔄 Synchronisation entre Appareils
+Pour synchroniser entre différents ordinateurs/navigateurs :
+1. Sur l'appareil source : "🔄 Export Synchronisation"
+2. Transférez le fichier vers le nouvel appareil
+3. Sur le nouvel appareil : "🔄 Import Synchronisation"
+4. Vos progressions sont synchronisées !
+
 ## ⚠️ Important
 - Les données sont sauvegardées dans le navigateur local
 - Pensez à faire des exports réguliers pour éviter la perte de données
@@ -105,7 +144,35 @@ Email : contact@amiens-ispa.fr
           sans connexion internet. Parfait pour les salles de classe ou le travail à domicile.
         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Synchronisation entre appareils */}
+          <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-200">
+            <div className="flex items-center gap-3 mb-4">
+              <RefreshCw className="w-8 h-8 text-green-600" />
+              <h3 className="text-xl font-bold text-gray-800">Synchronisation</h3>
+            </div>
+            <p className="text-gray-600 mb-4">
+              <strong>Nouveau !</strong> Synchronisez vos progressions entre différents 
+              ordinateurs ou navigateurs facilement.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={downloadAllProgressions}
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-3 rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 font-semibold"
+              >
+                <Download className="w-5 h-5" />
+                🔄 Export Synchronisation
+              </button>
+              <button
+                onClick={handleSyncImport}
+                className="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-3 rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 font-semibold"
+              >
+                <Upload className="w-5 h-5" />
+                🔄 Import Synchronisation
+              </button>
+            </div>
+          </div>
+          
           <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 rounded-2xl border border-blue-200">
             <div className="flex items-center gap-3 mb-4">
               <Package className="w-8 h-8 text-blue-600" />
@@ -123,10 +190,12 @@ Email : contact@amiens-ispa.fr
               Télécharger Package Complet
             </button>
           </div>
-          
-          <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-200">
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-gradient-to-br from-orange-50 to-yellow-50 p-6 rounded-2xl border border-orange-200">
             <div className="flex items-center gap-3 mb-4">
-              <Upload className="w-8 h-8 text-green-600" />
+              <Upload className="w-8 h-8 text-orange-600" />
               <h3 className="text-xl font-bold text-gray-800">Import Complet</h3>
             </div>
             <p className="text-gray-600 mb-4">
@@ -135,14 +204,13 @@ Email : contact@amiens-ispa.fr
             </p>
             <button
               onClick={handleImport}
-              className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 font-semibold"
+              className="w-full bg-gradient-to-r from-orange-500 to-yellow-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 font-semibold"
             >
               <Upload className="w-5 h-5" />
               Importer Package Complet
             </button>
           </div>
-        </div>
-        
+          
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-200">
           <div className="flex items-center gap-3 mb-4">
             <FileText className="w-8 h-8 text-purple-600" />
@@ -160,28 +228,32 @@ Email : contact@amiens-ispa.fr
             Télécharger Instructions
           </button>
         </div>
+        </div>
         
-        <div className="mt-8 p-6 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-2xl border border-orange-200">
+        <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-200">
           <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-            <HardDrive className="w-5 h-5 text-orange-600" />
-            💡 Comment ça marche ?
+            <RefreshCw className="w-5 h-5 text-blue-600" />
+            🔄 Synchronisation Simplifiée
           </h4>
+          <p className="text-gray-600 mb-3">
+            <strong>Problème résolu !</strong> Plus besoin de réimporter les JSON à chaque changement d'ordinateur :
+          </p>
           <ul className="space-y-2 text-gray-600">
             <li className="flex items-start gap-2">
-              <span className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></span>
-              <span><strong>Sauvegardez la page web</strong> avec Ctrl+S depuis votre navigateur</span>
+              <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
+              <span><strong>Sur l'ordinateur principal :</strong> Cliquez "🔄 Export Synchronisation"</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></span>
-              <span><strong>Exportez vos données</strong> avec le bouton "Package Complet"</span>
+              <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
+              <span><strong>Transférez le fichier</strong> vers le nouvel ordinateur (clé USB, email, etc.)</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></span>
-              <span><strong>Ouvrez le fichier HTML</strong> sur l'ordinateur hors ligne</span>
+              <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
+              <span><strong>Sur le nouvel ordinateur :</strong> Cliquez "🔄 Import Synchronisation"</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="w-2 h-2 bg-orange-500 rounded-full mt-2 flex-shrink-0"></span>
-              <span><strong>Importez vos données</strong> et travaillez normalement !</span>
+              <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0"></span>
+              <span><strong>C'est tout !</strong> Toutes vos progressions sont synchronisées instantanément</span>
             </li>
           </ul>
         </div>
@@ -192,6 +264,13 @@ Email : contact@amiens-ispa.fr
         type="file"
         accept="application/json"
         onChange={handleFileImport}
+        className="hidden"
+      />
+      <input
+        ref={syncFileInputRef}
+        type="file"
+        accept="application/json"
+        onChange={handleSyncFileImport}
         className="hidden"
       />
     </section>
