@@ -422,10 +422,7 @@ export default function App() {
     }
     
     if (chipId.startsWith('theme-')) {
-      const themeIndex = parseInt(chipId.split('-')[1], 10) - 1;
-     if (themeIndex < 0) {
-       return `Thème invalide (${chipId})`;
-     }
+      const themeIndex = parseInt(chipId.split('-')[1], 10);
       return themes[themeIndex] || `Thème ${themeIndex + 1}`;
     }
     
