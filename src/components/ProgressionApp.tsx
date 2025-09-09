@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Calendar, FileDown, FileUp, FileText, Printer, RotateCcw, Trash2 } from 'lucide-react';
 import { sharedStateManager } from '../utils/sharedState';
-import { progressionConfigs } from '../data/progressionConfigs';
 
 interface Row {
   label: string;
@@ -12,7 +11,6 @@ interface AppState {
   version: number;
   rows: Row[];
   cells: Record<string, string[]>;
-  comments: Record<string, string>;
   bank: string[];
   custom: Record<string, string>;
 }
@@ -35,7 +33,6 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
   const [newLabel, setNewLabel] = useState('');
   const [rows, setRows] = useState<Row[]>([]);
   const [cells, setCells] = useState<Record<string, string[]>>({});
-  const [comments, setComments] = useState<Record<string, string>>({});
   const [bankChips, setBankChips] = useState<string[]>([]);
   const [customChips, setCustomChips] = useState<Record<string, string>>({});
   const [draggedChip, setDraggedChip] = useState<string | null>(null);
@@ -43,22 +40,15 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
 
   // Initialize with 50 empty rows
   useEffect(() => {
-    console.log('🔍 useEffect initialization - config:', config.storageKey);
-    console.log('🔍 Config custom labels available:', !!config.customLabels);
-    console.log('🔍 Config custom labels count:', Object.keys(config.customLabels || {}).length);
-    
     const savedState = localStorage.getItem(config.storageKey);
     if (savedState) {
       try {
         const state = JSON.parse(savedState);
-        console.log('🔍 Found saved state, calling restoreState');
         restoreState(state);
       } catch {
-        console.log('🔍 Error parsing saved state, initializing default');
         initializeDefault();
       }
     } else {
-      console.log('🔍 No saved state, initializing default');
       initializeDefault();
     }
   }, [config.storageKey]);
@@ -73,17 +63,11 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     }
     setRows(defaultRows);
     setCells({});
-    setComments({});
     setBankChips([]);
     setCustomChips({});
   };
 
   const restoreState = (state: any) => {
-    console.log('🔍 DEBUT restoreState - state reçu:', state);
-    console.log('🔍 Config actuelle:', config);
-    console.log('🔍 Custom labels dans config:', config.customLabels);
-    console.log('🔍 Nombre de custom labels dans config:', Object.keys(config.customLabels || {}).length);
-    
     // Handle rows
     if (state.rows && Array.isArray(state.rows)) {
       const restoredRows = state.rows.map((r: any) => ({
@@ -99,31 +83,23 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     // Handle cells
     setCells(state.cells || {});
 
-    // Handle comments
-    setComments(state.comments || {});
-
     // Handle bank
     setBankChips(state.bank || []);
 
-    // Handle custom chips with COMPLETE recovery from config
+    // Handle custom chips - merge with config
     let customChipsMap = {};
     
-    console.log('🔍 Avant récupération custom chips');
-    
-    // Start with ALL custom labels from config (B1→B2 has many predefined)
+    // Start with config custom labels
     if (config.customLabels && typeof config.customLabels === 'object') {
       customChipsMap = { ...config.customLabels };
-      console.log('🔍 Custom labels copiés depuis config:', Object.keys(customChipsMap).length);
-      console.log('🔍 Premiers custom labels:', Object.keys(customChipsMap).slice(0, 5));
     }
     
-    // Merge existing custom chips from state if present
+    // Merge with saved custom chips
     if (state.custom && typeof state.custom === 'object') {
       customChipsMap = { ...customChipsMap, ...state.custom };
-      console.log('🔍 Custom labels après merge avec state:', Object.keys(customChipsMap).length);
     }
     
-    // Collect all chip IDs used in the progression
+    // Find all custom chip IDs used in the progression
     const allChipIds = new Set<string>();
     Object.values(state.cells || {}).forEach((chipIds: string[]) => {
       if (Array.isArray(chipIds)) {
@@ -134,75 +110,14 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
       state.bank.forEach((id: string) => allChipIds.add(id));
     }
     
-    console.log('🔍 Tous les chip IDs trouvés:', Array.from(allChipIds));
-    const customChipIds = Array.from(allChipIds).filter(id => id.startsWith('custom-'));
-    console.log('🔍 Custom chip IDs:', customChipIds);
-    console.log('🔍 Nombre de custom chip IDs:', customChipIds.length);
-
-    // Count recovery statistics
-    let recoveredFromConfig = 0;
-    let missingCustomCount = 0;
-    
-    // Process all custom chips found
+    // Generate temporary labels for missing custom chips
     allChipIds.forEach(id => {
-      if (id.startsWith('custom-')) {
-        if (config.customLabels && config.customLabels[id]) {
-          // Found in config - count as recovered
-          if (!customChipsMap[id]) {
-            customChipsMap[id] = config.customLabels[id];
-          }
-          recoveredFromConfig++;
-          console.log('🔍 Récupéré depuis config:', id, '->', config.customLabels[id]);
-        } else if (!customChipsMap[id]) {
-          // Not found anywhere - generate a temporary label
-          let context = 'Étiquette';
-          let prefix = '🏷️';
-          
-          // Try to determine context from placement
-          Object.entries(state.cells || {}).forEach(([cellId, chipIds]) => {
-            if (Array.isArray(chipIds) && chipIds.includes(id)) {
-              if (cellId.endsWith('c1')) {
-                context = 'Thème';
-                prefix = '🎨';
-              } else if (cellId.endsWith('c2')) {
-                context = 'Grammaire';
-                prefix = '📚';
-              }
-            }
-          });
-          
-          // Create a meaningful temporary label
-          const suffix = id.split('-').slice(-1)[0] || Math.random().toString(36).slice(2, 6);
-          customChipsMap[id] = `${prefix} ${context} personnalisé (${suffix})`;
-          missingCustomCount++;
-          console.log('🔍 Généré temporaire:', id, '->', customChipsMap[id]);
-        }
+      if (id.startsWith('custom-') && !customChipsMap[id]) {
+        customChipsMap[id] = `Étiquette personnalisée (${id.split('-').slice(-1)[0]})`;
       }
     });
 
-    console.log('🔍 Custom chips map final size:', Object.keys(customChipsMap).length);
-    console.log('🔍 Custom chips map keys sample:', Object.keys(customChipsMap).slice(0, 10));
     setCustomChips(customChipsMap);
-
-    // Show detailed recovery summary
-    console.log(`📊 Import Summary:
-      - Total custom chips found: ${Array.from(allChipIds).filter(id => id.startsWith('custom-')).length}
-      - Recovered from config: ${recoveredFromConfig}
-      - Generated temporary labels: ${missingCustomCount}
-      - Config has ${Object.keys(config.customLabels || {}).length} predefined labels`);
-
-    // Show user-friendly message
-    setTimeout(() => {
-      if (recoveredFromConfig > 0 && missingCustomCount > 0) {
-        alert(`📥 Import terminé !\n\n✅ ${recoveredFromConfig} étiquettes récupérées depuis la configuration\n⚠️ ${missingCustomCount} étiquettes avec libellés temporaires\n\n💡 Cliquez sur l'icône crayon (✎) pour renommer les étiquettes temporaires.`);
-      } else if (recoveredFromConfig > 0) {
-        alert(`✅ Import réussi !\n\n${recoveredFromConfig} étiquettes récupérées avec leurs libellés originaux.`);
-      } else if (missingCustomCount > 0) {
-        alert(`📥 Import terminé !\n\n⚠️ ${missingCustomCount} étiquettes avec libellés temporaires générés.\n\n💡 Cliquez sur l'icône crayon (✎) pour les renommer.`);
-      } else {
-        alert('✅ Import terminé avec succès !');
-      }
-    }, 500);
   };
 
   const saveState = () => {
@@ -210,31 +125,27 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
       version: 3,
       rows,
       cells,
-      comments,
       bank: bankChips,
       custom: customChips
     };
     
-    // Sauvegarder localement ET dans le système partagé
     localStorage.setItem(config.storageKey, JSON.stringify(state));
     sharedStateManager.saveToShared(config.storageKey, state);
   };
 
   useEffect(() => {
     saveState();
-  }, [rows, cells, comments, bankChips, customChips]);
+  }, [rows, cells, bankChips, customChips]);
 
-  // S'abonner aux changements partagés
+  // Subscribe to shared changes
   useEffect(() => {
     const unsubscribe = sharedStateManager.subscribeToChanges(config.storageKey, (sharedData) => {
-      // Vérifier si les données partagées sont plus récentes
       const currentData = localStorage.getItem(config.storageKey);
       let shouldUpdate = true;
       
       if (currentData) {
         try {
           const localData = JSON.parse(currentData);
-          // Ne pas écraser si les données locales sont plus récentes
           if (localData.lastModified && sharedData.lastModified) {
             shouldUpdate = sharedData.lastModified > localData.lastModified;
           }
@@ -244,7 +155,6 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
       }
       
       if (shouldUpdate) {
-        console.log('📥 Synchronisation des données partagées pour', config.storageKey);
         restoreState(sharedData);
       }
     });
@@ -291,9 +201,8 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     
     setRows(newRows);
     
-    // Update cell IDs and comments
+    // Update cell IDs
     const newCells: Record<string, string[]> = {};
-    const newComments: Record<string, string> = {};
     
     Object.entries(cells).forEach(([cellId, chipIds]) => {
       const match = cellId.match(/^r(\d+)c(\d+)$/);
@@ -314,26 +223,7 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
       }
     });
     
-    Object.entries(comments).forEach(([commentId, comment]) => {
-      const match = commentId.match(/^r(\d+)$/);
-      if (match) {
-        const rowNum = parseInt(match[1], 10);
-        
-        let newRowNum = rowNum;
-        if (rowNum === index + 1) {
-          newRowNum = targetIndex + 1;
-        } else if (rowNum === targetIndex + 1) {
-          newRowNum = index + 1;
-        }
-        
-        newComments[`r${newRowNum}`] = comment;
-      } else {
-        newComments[commentId] = comment;
-      }
-    });
-    
     setCells(newCells);
-    setComments(newComments);
     
     // Renumber weeks after moving
     renumberWeeks(newRows);
@@ -348,14 +238,6 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
       return row;
     });
     setRows(updatedRows);
-  };
-
-  const updateComment = (rowIndex: number, comment: string) => {
-    const commentId = `r${rowIndex + 1}`;
-    setComments(prev => ({
-      ...prev,
-      [commentId]: comment
-    }));
   };
 
   const handleDragStart = (chipId: string) => {
@@ -411,7 +293,6 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
   };
 
   const returnToBank = (chipId: string) => {
-    handleDrop('bank');
     setDraggedChip(chipId);
     handleDrop('bank');
   };
@@ -438,49 +319,28 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
   };
 
   const getChipLabel = (chipId: string): string => {
-    console.log('🔍 getChipLabel appelé pour:', chipId);
-    
     if (chipId.startsWith('custom-')) {
-      let label = customChips[chipId];
-      if (!label && config.customLabels) {
-        label = config.customLabels[chipId];
-      }
-      if (!label) {
-        label = 'Étiquette personnalisée';
-        console.warn('🔍 Aucun label trouvé pour:', chipId);
-      }
-      console.log('🔍 Custom chip label:', chipId, '->', label);
-      return label;
+      return customChips[chipId] || 'Étiquette personnalisée';
     }
     
-    // Handle theme-* chips
     if (chipId.startsWith('theme-')) {
-      const themeIndex = parseInt(chipId.split('-')[1], 10);
-      // Les indices des thèmes commencent à 0, donc theme-30 = config.themes[29]
-      const themeLabel = config.themes[themeIndex - 1];
-      console.log('🔍 Theme chip:', chipId, 'index:', themeIndex, 'label:', themeLabel);
-      return themeLabel || `Thème ${themeIndex}`;
+      const themeIndex = parseInt(chipId.split('-')[1], 10) - 1;
+      return config.themes[themeIndex] || `Thème ${themeIndex + 1}`;
     }
     
-    // Handle chip-* (grammar points)
     if (chipId.startsWith('chip-')) {
       const chipIndex = parseInt(chipId.split('-')[1], 10);
-      // Les indices des points grammaticaux commencent à 0, donc chip-30 = config.grammarPoints[29]
-      const grammarLabel = config.grammarPoints[chipIndex - 1];
-      console.log('🔍 Grammar chip:', chipId, 'index:', chipIndex, 'label:', grammarLabel);
-      return grammarLabel || `Point grammatical ${chipIndex}`;
+      return config.grammarPoints[chipIndex] || `Point grammatical ${chipIndex + 1}`;
     }
     
     return chipId;
   };
 
   const exportJson = () => {
-    // Export de la progression actuelle uniquement
     const state: AppState = {
       version: 3,
       rows,
       cells,
-      comments,
       bank: bankChips,
       custom: customChips
     };
@@ -498,100 +358,6 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     fileInputRef.current?.click();
   };
 
-  const exportGlobalJson = () => {
-    // Export global de toutes les progressions
-    const globalState: Record<string, AppState> = {};
-    
-    // Ajouter la progression actuelle
-    globalState[config.storageKey] = {
-      version: 3,
-      rows,
-      cells,
-      comments,
-      bank: bankChips,
-      custom: customChips
-    };
-    
-    // Ajouter les autres progressions depuis localStorage
-    const allConfigs = ['progA1A2', 'progA2B1', 'progB1B2', 'progA2Emploi'];
-    allConfigs.forEach(key => {
-      if (key !== config.storageKey) {
-        const savedData = localStorage.getItem(key);
-        if (savedData) {
-          try {
-            globalState[key] = JSON.parse(savedData);
-          } catch (error) {
-            console.warn(`Erreur lors de la lecture de ${key}:`, error);
-          }
-        }
-      }
-    });
-    
-    const blob = new Blob([JSON.stringify(globalState, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `progressions-ispa-${new Date().toISOString().split('T')[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const importGlobalJson = () => {
-    // Utiliser le même input file mais traiter différemment
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'application/json';
-    input.onchange = (event) => {
-      const file = (event.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const importedData = JSON.parse(e.target?.result as string);
-          
-          // Vérifier si c'est un export global
-          if (importedData.version !== undefined) {
-            // Format ancien (progression unique) - appliquer à la page courante
-            restoreState(importedData);
-            alert('✅ Progression importée sur la page courante !');
-          } else {
-            // Format nouveau (export global)
-            let importedCount = 0;
-            let currentProgressionImported = false;
-            
-            Object.entries(importedData).forEach(([key, state]: [string, any]) => {
-              if (typeof state === 'object' && state.version !== undefined) {
-                localStorage.setItem(key, JSON.stringify(state));
-                importedCount++;
-                
-                // Si c'est la progression actuelle, l'appliquer immédiatement
-                if (key === config.storageKey) {
-                  restoreState(state);
-                  currentProgressionImported = true;
-                }
-              }
-            });
-            
-            if (importedCount > 0) {
-              alert(`✅ ${importedCount} progression(s) importée(s) avec succès !${currentProgressionImported ? ' La progression actuelle a été mise à jour.' : ''}`);
-              
-              // Recharger la page pour actualiser toutes les données
-              if (!currentProgressionImported) {
-                window.location.reload();
-              }
-            } else {
-              alert('❌ Aucune progression valide trouvée dans le fichier.');
-            }
-          }
-        } catch (error) {
-          alert('❌ Fichier JSON invalide.');
-        }
-      };
-      reader.readAsText(file);
-    };
-    input.click();
-  };
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -600,46 +366,14 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     reader.onload = (e) => {
       try {
         const importedData = JSON.parse(e.target?.result as string);
-        
-        // Détecter le format du fichier
-        if (importedData.version !== undefined) {
-          // Nouveau format avec version
-          restoreState(importedData);
-          alert('✅ Progression importée avec succès !');
-        } else if (importedData.rows && importedData.cells) {
-          // Ancien format sans version (comme votre fichier)
-          const convertedState = {
-            version: 3,
-            rows: importedData.rows.map((r: any) => ({
-              label: r.label || '',
-              type: r.label === 'Vacances' ? 'vac' : 'week'
-            })),
-            cells: importedData.cells || {},
-            comments: importedData.comments || {},
-            bank: importedData.bank || [],
-            custom: { ...config.customLabels, ...(importedData.custom || {}) }
-          };
-          restoreState(convertedState);
-          alert('✅ Ancien format importé avec succès !');
-        } else if (typeof importedData === 'object' && !importedData.version) {
-          // Export global (plusieurs progressions)
-          const currentState = importedData[config.storageKey];
-          if (currentState && currentState.version !== undefined) {
-            restoreState(currentState);
-            alert('✅ Progression importée depuis l\'export global !');
-          } else {
-            alert('❌ Cette progression n\'est pas présente dans le fichier global.');
-          }
-        } else {
-          alert('❌ Format de fichier non reconnu.');
-        }
+        restoreState(importedData);
+        alert('✅ Progression importée avec succès !');
       } catch (error) {
         alert('❌ Fichier JSON invalide.');
       }
     };
     reader.readAsText(file);
     
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -673,7 +407,6 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
       const rowId = index + 1;
       const themes = cells[`r${rowId}c1`]?.map(id => getChipLabel(id)).join(' • ') || '';
       const grammar = cells[`r${rowId}c2`]?.map(id => getChipLabel(id)).join(' • ') || '';
-      const comment = comments[`r${rowId}`] || '';
       
       const isVacation = row.type === 'vac';
       const rowStyle = isVacation ? 'style="background: #fff3cd; color: #856404; font-weight: bold;"' : '';
@@ -682,7 +415,6 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
         <th style="text-align:right;padding:.6rem .8rem;background: #f8f9fa;border-right: 2px solid #dee2e6;font-weight:bold;${isVacation ? 'background: #fff3cd;' : ''}">${row.label}</th>
         <td>${themes}</td>
         <td>${grammar}</td>
-        <td style="font-style: italic; color: #666;">${comment}</td>
       </tr>`;
     }).join('');
 
@@ -714,7 +446,6 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
         <th>📅 Semaine</th>
         <th>🎨 Thèmes</th>
         <th>📚 Points Grammaticaux</th>
-        <th>💬 Commentaires</th>
       </tr>
     </thead>
     <tbody>${tableRows}</tbody>
@@ -838,27 +569,19 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
             </button>
             <button onClick={exportJson} className="btn-secondary">
               <FileDown className="w-4 h-4" />
-             Export JSON
+              Export JSON
             </button>
             <button onClick={importJson} className="btn-secondary">
               <FileUp className="w-4 h-4" />
-             Import JSON
-          </button>
-          <button onClick={exportGlobalJson} className="btn-secondary">
-            <FileDown className="w-4 h-4" />
-            Export Global
-          </button>
-          <button onClick={importGlobalJson} className="btn-secondary">
-            <FileUp className="w-4 h-4" />
-            Import Global
+              Import JSON
             </button>
             <button onClick={exportDoc} className="btn-secondary">
               <FileText className="w-4 h-4" />
-              Word (page)
+              Word
             </button>
             <button onClick={exportPdf} className="btn-secondary">
               <Printer className="w-4 h-4" />
-              PDF (page)
+              PDF
             </button>
           </div>
 
@@ -897,9 +620,6 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
                   <th className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 text-left font-bold sticky top-0">
                     📚 Grammaire
                   </th>
-                  <th className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-4 text-left font-bold sticky top-0">
-                    💬 Commentaires
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -931,15 +651,6 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
                     </td>
                     <td className="p-3 border-b border-gray-200">
                       {renderDropZone(`r${index + 1}c2`)}
-                    </td>
-                    <td className="p-3 border-b border-gray-200">
-                      <textarea
-                        value={comments[`r${index + 1}`] || ''}
-                        onChange={(e) => updateComment(index, e.target.value)}
-                        placeholder="Commentaire..."
-                        className="w-full p-2 text-sm border border-gray-300 rounded-lg resize-none focus:border-blue-500 focus:outline-none"
-                        rows={2}
-                      />
                     </td>
                   </tr>
                 ))}
