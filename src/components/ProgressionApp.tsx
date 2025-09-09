@@ -26,9 +26,10 @@ export interface ProgressionConfig {
 
 interface ProgressionAppProps {
   config: ProgressionConfig;
+  isReadOnly?: boolean;
 }
 
-export default function ProgressionApp({ config }: ProgressionAppProps) {
+export default function ProgressionApp({ config, isReadOnly = false }: ProgressionAppProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [newLabel, setNewLabel] = useState('');
   const [rows, setRows] = useState<Row[]>([]);
@@ -474,23 +475,28 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
       <div
         key={chipId}
         className="chip"
-        draggable
-        onDragStart={() => handleDragStart(chipId)}
-        onDragEnd={handleDragEnd}
+        draggable={!isReadOnly}
+        onDragStart={!isReadOnly ? () => handleDragStart(chipId) : undefined}
+        onDragEnd={!isReadOnly ? handleDragEnd : undefined}
+        style={isReadOnly ? { cursor: 'default' } : {}}
       >
         <span className="handle"></span>
         <span className="label">{label}</span>
-        {isCustom && (
+        {isCustom && !isReadOnly && (
           <button className="edit" onClick={() => renameChip(chipId)} title="Renommer">
             ✎
           </button>
         )}
-        <button className="remove" onClick={() => returnToBank(chipId)} title="Renvoyer à la banque">
-          ×
-        </button>
-        <button className="trash" onClick={() => deleteChip(chipId)} title="Supprimer définitivement">
-          🗑
-        </button>
+        {!isReadOnly && (
+          <>
+            <button className="remove" onClick={() => returnToBank(chipId)} title="Renvoyer à la banque">
+              ×
+            </button>
+            <button className="trash" onClick={() => deleteChip(chipId)} title="Supprimer définitivement">
+              🗑
+            </button>
+          </>
+        )}
       </div>
     );
   };
@@ -501,8 +507,9 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     return (
       <div
         className="dropzone"
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={() => handleDrop(cellId)}
+        onDragOver={!isReadOnly ? (e) => e.preventDefault() : undefined}
+        onDrop={!isReadOnly ? () => handleDrop(cellId) : undefined}
+        style={isReadOnly ? { borderStyle: 'solid', borderColor: '#e5e7eb' } : {}}
       >
         {chipIds.map(chipId => renderChip(chipId))}
       </div>
@@ -512,11 +519,19 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
   return (
     <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8">
       {/* Bank Panel */}
-      <section className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/30">
+      <section className={`bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/30 ${isReadOnly ? 'opacity-75' : ''}`}>
         <div className="p-6">
           <h2 className="text-xl font-bold text-blue-600 mb-4 flex items-center gap-2">
-            🎯 Banque d'étiquettes
+            {isReadOnly ? '👁️ Banque d\'étiquettes (Lecture seule)' : '🎯 Banque d\'étiquettes'}
           </h2>
+          
+          {isReadOnly && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+              <p className="text-sm text-blue-700">
+                <strong>Mode consultation :</strong> Vous visualisez la dernière version sauvegardée.
+              </p>
+            </div>
+          )}
           
           {/* Search */}
           <div className="relative mb-4">
@@ -526,6 +541,7 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
               placeholder="Rechercher…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              disabled={isReadOnly}
               className="w-full pl-10 pr-4 py-3 bg-white/50 border-2 border-transparent rounded-xl focus:border-blue-500 focus:bg-white/70 transition-all"
             />
           </div>
@@ -533,74 +549,92 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
           {/* Bank */}
           <div
             className="max-h-96 overflow-y-auto space-y-2 mb-4"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => handleDrop('bank')}
+            onDragOver={!isReadOnly ? (e) => e.preventDefault() : undefined}
+            onDrop={!isReadOnly ? () => handleDrop('bank') : undefined}
           >
             {filteredBankChips.map(chipId => renderChip(chipId))}
           </div>
 
-          {/* Add Custom */}
-          <div className="flex gap-2 mb-4">
-            <input
-              type="text"
-              placeholder="Nouvelle étiquette…"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && createCustomChip()}
-              className="flex-1 px-3 py-2 bg-white/50 border-2 border-transparent rounded-xl focus:border-blue-500 focus:bg-white/70 transition-all"
-            />
-            <button
-              onClick={createCustomChip}
-              className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Ajouter
-            </button>
-          </div>
+          {!isReadOnly && (
+            <>
+              {/* Add Custom */}
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  placeholder="Nouvelle étiquette…"
+                  value={newLabel}
+                  onChange={(e) => setNewLabel(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && createCustomChip()}
+                  className="flex-1 px-3 py-2 bg-white/50 border-2 border-transparent rounded-xl focus:border-blue-500 focus:bg-white/70 transition-all"
+                />
+                <button
+                  onClick={createCustomChip}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Ajouter
+                </button>
+              </div>
 
-          {/* Controls */}
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            <button onClick={addRow} className="btn-secondary">
-              <Calendar className="w-4 h-4" />
-              + Ligne
-            </button>
-            <button onClick={addVacationRow} className="btn-secondary">
-              🏖️ + Vacances
-            </button>
-            <button onClick={exportJson} className="btn-secondary">
-              <FileDown className="w-4 h-4" />
-              Export JSON
-            </button>
-            <button onClick={importJson} className="btn-secondary">
-              <FileUp className="w-4 h-4" />
-              Import JSON
-            </button>
-            <button onClick={exportDoc} className="btn-secondary">
-              <FileText className="w-4 h-4" />
-              Word
-            </button>
-            <button onClick={exportPdf} className="btn-secondary">
-              <Printer className="w-4 h-4" />
-              PDF
-            </button>
-          </div>
+              {/* Controls */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                <button onClick={addRow} className="btn-secondary">
+                  <Calendar className="w-4 h-4" />
+                  + Ligne
+                </button>
+                <button onClick={addVacationRow} className="btn-secondary">
+                  🏖️ + Vacances
+                </button>
+                <button onClick={exportJson} className="btn-secondary">
+                  <FileDown className="w-4 h-4" />
+                  Export JSON
+                </button>
+                <button onClick={importJson} className="btn-secondary">
+                  <FileUp className="w-4 h-4" />
+                  Import JSON
+                </button>
+                <button onClick={exportDoc} className="btn-secondary">
+                  <FileText className="w-4 h-4" />
+                  Word
+                </button>
+                <button onClick={exportPdf} className="btn-secondary">
+                  <Printer className="w-4 h-4" />
+                  PDF
+                </button>
+              </div>
 
-          <button onClick={resetAll} className="w-full btn-danger mb-4">
-            <RotateCcw className="w-4 h-4" />
-            Réinitialiser
-          </button>
+              <button onClick={resetAll} className="w-full btn-danger mb-4">
+                <RotateCcw className="w-4 h-4" />
+                Réinitialiser
+              </button>
 
-          {/* Trash Zone */}
-          <div
-            className="border-2 border-dashed border-red-400 bg-red-50 rounded-xl p-4 text-center text-red-700 font-semibold"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={() => handleDrop('trash')}
-          >
-            <Trash2 className="w-6 h-6 mx-auto mb-2" />
-            <strong>Corbeille</strong>
-            <br />
-            Déposez ici pour supprimer
-          </div>
+              {/* Trash Zone */}
+              <div
+                className="border-2 border-dashed border-red-400 bg-red-50 rounded-xl p-4 text-center text-red-700 font-semibold"
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDrop('trash')}
+              >
+                <Trash2 className="w-6 h-6 mx-auto mb-2" />
+                <strong>Corbeille</strong>
+                <br />
+                Déposez ici pour supprimer
+              </div>
+            </>
+          )}
+
+          {/* Export only controls for read-only mode */}
+          {isReadOnly && (
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button onClick={exportDoc} className="btn-secondary">
+                <FileText className="w-4 h-4" />
+                Word
+              </button>
+              <button onClick={exportPdf} className="btn-secondary">
+                <Printer className="w-4 h-4" />
+                PDF
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
@@ -628,22 +662,24 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
                     <th className={`p-3 text-right font-bold border-b border-gray-200 ${row.type === 'vac' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-50'}`}>
                       <div className="flex items-center justify-end gap-2">
                         <span>{row.label}</span>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => moveRow(index, 'up')}
-                            disabled={index === 0}
-                            className="w-6 h-6 bg-white border rounded text-xs hover:bg-gray-100 disabled:opacity-30"
-                          >
-                            ▲
-                          </button>
-                          <button
-                            onClick={() => moveRow(index, 'down')}
-                            disabled={index === rows.length - 1}
-                            className="w-6 h-6 bg-white border rounded text-xs hover:bg-gray-100 disabled:opacity-30"
-                          >
-                            ▼
-                          </button>
-                        </div>
+                        {!isReadOnly && (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => moveRow(index, 'up')}
+                              disabled={index === 0}
+                              className="w-6 h-6 bg-white border rounded text-xs hover:bg-gray-100 disabled:opacity-30"
+                            >
+                              ▲
+                            </button>
+                            <button
+                              onClick={() => moveRow(index, 'down')}
+                              disabled={index === rows.length - 1}
+                              className="w-6 h-6 bg-white border rounded text-xs hover:bg-gray-100 disabled:opacity-30"
+                            >
+                              ▼
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </th>
                     <td className="p-3 border-b border-gray-200">
