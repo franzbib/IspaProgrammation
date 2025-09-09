@@ -427,7 +427,7 @@ export default function App() {
     }
     
     if (chipId.startsWith('theme-')) {
-      const themeIndex = parseInt(chipId.split('-')[1], 10) - 1; // Décalage car theme-1 = index 0
+      const themeIndex = parseInt(chipId.split('-')[1], 10) - 1;
       return themes[themeIndex] || `Thème ${themeIndex + 1}`;
     }
     
