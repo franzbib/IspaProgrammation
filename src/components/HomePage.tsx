@@ -5,9 +5,6 @@ import OfflineExportPanel from './OfflineExportPanel';
 export default function HomePage() {
   return (
     <div className="max-w-6xl mx-auto space-y-12">
-      {/* Offline Export Panel */}
-      <OfflineExportPanel />
-      
       {/* Hero Section */}
       <section className="text-center bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/30 p-12">
         <div className="mb-8">
@@ -333,6 +330,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Offline Export Panel */}
+      <OfflineExportPanel />
     </div>
   );
 }
