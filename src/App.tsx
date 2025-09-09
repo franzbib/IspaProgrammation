@@ -16,6 +16,7 @@ interface AppState {
 
 // Thèmes B1→B2 (index 0-37 pour theme-1 à theme-38)
 const themes = [
+  "", // Index 0 vide pour correspondre à theme-0 (non utilisé)
   "LES LOISIRS", "LE LOGEMENT", "LA LITTÉRATURE", "LES ÉTUDES SUPÉRIEURES", 
   "PARIS, CAPITALE", "REUSSIR SA CANDIDATURE", "LE CINÉMA", "LES MÉDIAS", 
   "SANTÉ", "GRANDS REPÈRES HISTORIQUES", "COMMERCE et ECONOMIE", "LE SYSTÈME POLITIQUE", 
@@ -427,7 +428,7 @@ export default function App() {
     }
     
     if (chipId.startsWith('theme-')) {
-      const themeIndex = parseInt(chipId.split('-')[1], 10) - 1;
+      const themeIndex = parseInt(chipId.split('-')[1], 10);
       return themes[themeIndex] || `Thème ${themeIndex + 1}`;
     }
     
