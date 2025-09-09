@@ -90,6 +90,7 @@ const customLabelsB1B2: Record<string, string> = {
 };
 
 const themesB1B2 = [
+  // Index 0-38 pour correspondre aux theme-1 à theme-39
   "LES LOISIRS", "LE LOGEMENT", "LA LITTÉRATURE", "LES ÉTUDES SUPÉRIEURES", 
   "PARIS, CAPITALE", "REUSSIR SA CANDIDATURE", "LE CINÉMA", "LES MÉDIAS", 
   "SANTÉ", "GRANDS REPÈRES HISTORIQUES", "COMMERCE et ECONOMIE", "LE SYSTÈME POLITIQUE", 

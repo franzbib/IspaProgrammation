@@ -456,13 +456,19 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     // Handle theme-* chips
     if (chipId.startsWith('theme-')) {
       const themeIndex = parseInt(chipId.split('-')[1], 10);
-      return config.themes[themeIndex] || `Thème ${themeIndex}`;
+      // Les indices des thèmes commencent à 0, donc theme-30 = config.themes[29]
+      const themeLabel = config.themes[themeIndex - 1];
+      console.log('🔍 Theme chip:', chipId, 'index:', themeIndex, 'label:', themeLabel);
+      return themeLabel || `Thème ${themeIndex}`;
     }
     
     // Handle chip-* (grammar points)
     if (chipId.startsWith('chip-')) {
       const chipIndex = parseInt(chipId.split('-')[1], 10);
-      return config.grammarPoints[chipIndex] || `Point grammatical ${chipIndex}`;
+      // Les indices des points grammaticaux commencent à 0, donc chip-30 = config.grammarPoints[29]
+      const grammarLabel = config.grammarPoints[chipIndex - 1];
+      console.log('🔍 Grammar chip:', chipId, 'index:', chipIndex, 'label:', grammarLabel);
+      return grammarLabel || `Point grammatical ${chipIndex}`;
     }
     
     return chipId;
