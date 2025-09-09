@@ -12,10 +12,10 @@ export default function App() {
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/10 border-b border-white/20">
         <div className="max-w-7xl mx-auto px-6 py-5">
           <h1 className="text-3xl font-bold text-white">
-            ISPA Amiens - Progressions FLE
+            ISPA Amiens - Progressions FLE 🚧 DEV
           </h1>
           <p className="text-white/70 text-sm mt-2">
-            Institut Supérieur de Propédeutique d'Amiens • Outils pédagogiques
+            Institut Supérieur de Propédeutique d'Amiens • Version Développement
           </p>
         </div>
       </header>

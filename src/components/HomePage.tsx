@@ -8,6 +8,9 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="text-center bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/30 p-12">
         <div className="mb-8">
+          <div className="mb-4 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full inline-block">
+            🚧 VERSION DÉVELOPPEMENT 🚧
+          </div>
           <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent mb-4">
             ISPA Amiens
           </h1>
@@ -20,6 +23,23 @@ export default function HomePage() {
             Situé au cœur d'Amiens, l'institut propose des programmes propédeutiques innovants 
             préparant à l'intégration dans l'enseignement supérieur français.
           </p>
+          
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+            <h3 className="font-bold text-gray-800 mb-2">📍 Versions Disponibles</h3>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <a 
+                href="https://application-de-progr-moc2.bolt.host" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              >
+                ✅ Version Stable (Production)
+              </a>
+              <span className="px-4 py-2 bg-orange-500 text-white rounded-lg">
+                🚧 Version Dev (Vous êtes ici)
+              </span>
+            </div>
+          </div>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
