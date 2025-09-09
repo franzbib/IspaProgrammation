@@ -47,23 +47,29 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     if (savedState) {
       try {
         const state = JSON.parse(savedState);
-        restoreState(state);
-      } catch {
-        if (config.storageKey === 'progA2B1') {
-          initializeA2B1WithData();
+        // Vérifier la validité des données avant de les restaurer
+        if (state.version && state.rows && Array.isArray(state.rows) && state.cells) {
+          restoreState(state);
         } else {
-          initializeDefault();
+          console.warn('Données corrompues détectées, initialisation par défaut');
+          initializeWithDefaults();
         }
+      } catch {
+        console.warn('Erreur de parsing, initialisation par défaut');
+        initializeWithDefaults();
       }
     } else {
-      // Pour A2→B1, initialiser avec les données pré-remplies
-      if (config.storageKey === 'progA2B1') {
-        initializeA2B1WithData();
-      } else {
-        initializeDefault();
-      }
+      initializeWithDefaults();
     }
   }, [config.storageKey]);
+
+  const initializeWithDefaults = () => {
+    if (config.storageKey === 'progA2B1') {
+      initializeA2B1WithData();
+    } else {
+      initializeDefault();
+    }
+  };
 
   const initializeA2B1WithData = () => {
     // Créer 30 semaines + 4 périodes de vacances
@@ -305,6 +311,8 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
   };
 
   const restoreState = (state: any) => {
+    console.log('Restoration des données:', config.storageKey, state);
+    
     // Handle rows
     if (state.rows && Array.isArray(state.rows)) {
       const restoredRows = state.rows.map((r: any) => ({
@@ -313,15 +321,27 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       }));
       setRows(restoredRows);
     } else {
-      initializeDefault();
+      console.warn('Rows invalides, initialisation par défaut');
+      initializeWithDefaults();
       return;
     }
 
     // Handle cells
-    setCells(state.cells || {});
+    const validCells = {};
+    if (state.cells && typeof state.cells === 'object') {
+      // Nettoyer les cellules pour s'assurer qu'elles sont valides
+      Object.entries(state.cells).forEach(([cellId, chipIds]) => {
+        if (Array.isArray(chipIds)) {
+          validCells[cellId] = chipIds.filter(id => typeof id === 'string' && id.length > 0);
+        }
+      });
+    }
+    setCells(validCells);
 
     // Handle bank
-    setBankChips(state.bank || []);
+    const validBank = Array.isArray(state.bank) ? 
+      state.bank.filter(id => typeof id === 'string' && id.length > 0) : [];
+    setBankChips(validBank);
 
     // Handle custom chips - merge with config
     let customChipsMap = {};
@@ -338,13 +358,13 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     
     // Find all custom chip IDs used in the progression
     const allChipIds = new Set<string>();
-    Object.values(state.cells || {}).forEach((chipIds: string[]) => {
+    Object.values(validCells).forEach((chipIds: string[]) => {
       if (Array.isArray(chipIds)) {
         chipIds.forEach(id => allChipIds.add(id));
       }
     });
-    if (Array.isArray(state.bank)) {
-      state.bank.forEach((id: string) => allChipIds.add(id));
+    if (Array.isArray(validBank)) {
+      validBank.forEach((id: string) => allChipIds.add(id));
     }
     
     // Generate temporary labels for missing custom chips
@@ -355,6 +375,13 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     });
 
     setCustomChips(customChipsMap);
+    
+    console.log('État restauré avec succès:', {
+      rows: restoredRows.length,
+      cells: Object.keys(validCells).length,
+      bank: validBank.length,
+      custom: Object.keys(customChipsMap).length
+    });
   };
 
   const saveState = () => {
@@ -363,16 +390,29 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       rows,
       cells,
       bank: bankChips,
-      custom: customChips
+      custom: customChips,
+      lastModified: Date.now(),
+      deviceId: getDeviceId()
     };
+    
+    console.log('Sauvegarde de l\'état:', config.storageKey, {
+      rows: rows.length,
+      cells: Object.keys(cells).length,
+      bank: bankChips.length,
+      custom: Object.keys(customChips).length
+    });
     
     localStorage.setItem(config.storageKey, JSON.stringify(state));
     sharedStateManager.saveToShared(config.storageKey, state);
-    
-    // Sauvegarder dans le cloud en arrière-plan
-    cloudSyncManager.saveToCloud(config.storageKey, state).catch(error => {
-      console.warn('Erreur sauvegarde cloud:', error);
-    });
+  };
+
+  const getDeviceId = () => {
+    let deviceId = localStorage.getItem('deviceId');
+    if (!deviceId) {
+      deviceId = `device-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem('deviceId', deviceId);
+    }
+    return deviceId;
   };
 
   useEffect(() => {
@@ -381,68 +421,19 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
 
   // Subscribe to shared changes
   useEffect(() => {
-    // Charger depuis le cloud au démarrage
-    const loadFromCloud = async () => {
-      setIsCloudSyncing(true);
-      try {
-        const cloudData = await cloudSyncManager.loadFromCloud(config.storageKey);
-        if (cloudData) {
-          const localData = localStorage.getItem(config.storageKey);
-          let shouldUpdate = true;
-          
-          if (localData) {
-            try {
-              const local = JSON.parse(localData);
-              shouldUpdate = cloudData.lastModified > (local.lastModified || 0);
-            } catch (error) {
-              console.warn('Erreur comparaison données:', error);
-            }
-          }
-          
-          if (shouldUpdate) {
-            restoreState(cloudData);
-          }
-        }
-      } catch (error) {
-        console.warn('Erreur chargement cloud:', error);
-      } finally {
-        setIsCloudSyncing(false);
-      }
-    };
-
-    loadFromCloud();
-
-    // S'abonner aux changements cloud
-    const unsubscribeCloud = cloudSyncManager.subscribeToCloudChanges(config.storageKey, (cloudData) => {
-      const currentData = localStorage.getItem(config.storageKey);
-      let shouldUpdate = true;
-      
-      if (currentData) {
-        try {
-          const localData = JSON.parse(currentData);
-          if (localData.lastModified && cloudData.lastModified) {
-            shouldUpdate = cloudData.lastModified > localData.lastModified;
-          }
-        } catch (error) {
-          console.warn('Erreur lors de la comparaison des données:', error);
-        }
-      }
-      
-      if (shouldUpdate) {
-        restoreState(cloudData);
-      }
-    });
-
     // S'abonner aux changements locaux (pour compatibilité)
     const unsubscribe = sharedStateManager.subscribeToChanges(config.storageKey, (sharedData) => {
       const currentData = localStorage.getItem(config.storageKey);
       let shouldUpdate = true;
+      
+      console.log('Changement détecté:', config.storageKey, sharedData);
       
       if (currentData) {
         try {
           const localData = JSON.parse(currentData);
           if (localData.lastModified && sharedData.lastModified) {
             shouldUpdate = sharedData.lastModified > localData.lastModified;
+            console.log('Comparaison timestamps:', localData.lastModified, 'vs', sharedData.lastModified, '→', shouldUpdate);
           }
         } catch (error) {
           console.warn('Erreur lors de la comparaison des données:', error);
@@ -450,13 +441,13 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       }
       
       if (shouldUpdate) {
+        console.log('Mise à jour des données depuis le partage');
         restoreState(sharedData);
       }
     });
 
     return () => {
       unsubscribe();
-      unsubscribeCloud();
     };
   }, [config.storageKey]);
 
@@ -832,32 +823,6 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
           )}
           
           {/* Indicateur de synchronisation cloud */}
-          {isCloudSyncing && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl">
-              <p className="text-sm text-green-700 flex items-center gap-2">
-                <span className="animate-spin">🔄</span>
-                <strong>Synchronisation cloud en cours...</strong>
-              </p>
-            </div>
-          )}
-          
-          {!isCloudSyncing && cloudSyncManager.isOnline() && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl">
-              <p className="text-sm text-green-700 flex items-center gap-2">
-                <span>☁️</span>
-                <strong>Synchronisation cloud active</strong> - Vos modifications sont automatiquement partagées
-              </p>
-            </div>
-          )}
-          
-          {!cloudSyncManager.isOnline() && (
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
-              <p className="text-sm text-yellow-700 flex items-center gap-2">
-                <span>📱</span>
-                <strong>Mode hors ligne</strong> - Les modifications seront synchronisées à la reconnexion
-              </p>
-            </div>
-          )}
           
           {/* Search */}
           <div className="relative mb-4">

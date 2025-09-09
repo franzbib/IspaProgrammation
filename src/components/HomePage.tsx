@@ -372,6 +372,29 @@ export default function HomePage() {
       <OfflineExportPanel />
       
       {/* Cloud Sync Panel */}
+        
+        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <h5 className="font-semibold text-blue-800 mb-2">🔧 Réinitialisation Complète</h5>
+          <p className="text-sm text-blue-700 mb-3">
+            Si vous rencontrez des problèmes de synchronisation ou des étiquettes manquantes, 
+            vous pouvez réinitialiser toutes les progressions avec les données par défaut :
+          </p>
+          <button
+            onClick={() => {
+              if (confirm('⚠️ ATTENTION : Cette action va réinitialiser TOUTES les progressions avec les données par défaut. Toutes vos modifications seront perdues. Continuer ?')) {
+                // Importer l'utilitaire d'initialisation
+                import('../utils/initializeProgressions').then(({ initializeAllProgressions }) => {
+                  initializeAllProgressions();
+                  alert('✅ Toutes les progressions ont été réinitialisées. Rechargez la page.');
+                  window.location.reload();
+                });
+              }
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
+          >
+            🔄 Réinitialiser Toutes les Progressions
+          </button>
+        </div>
       <CloudSyncPanel />
     </div>
   );
