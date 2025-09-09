@@ -147,7 +147,6 @@ const customLabels: Record<string, string> = {
   'custom-mf57fsa9-t7gm': 'L\'expression de l\'hypothèse non réalisée (le regret) : si + plus-que-parfait/conditionnel passé',
   'custom-mf56elbt-lzcg': 'VIE QUOTIDIENNE',
   'custom-mf56nt3h-tqs3': 'CONSOMMATION RESPONSABLE',
-  'custom-mf56nzx2-2rut': 'VIE EN SOCIETE',
   'custom-mf57msdx-gmrs': 'LE BIEN-ETRE',
   'custom-mf57myaz-4a3r': 'LES TEMPS LIBRES',
   'custom-mf57n5ym-rhu4': 'LE TOURISME DANS LES HAUTS DE FRANCE',
