@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Calendar, FileDown, FileUp, FileText, Printer, RotateCcw, Trash2 } from 'lucide-react';
 import { sharedStateManager } from '../utils/sharedState';
-import { simpleCloudSync } from '../utils/simpleCloudSync';
 
 interface Row {
   label: string;
@@ -47,54 +46,23 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     loadInitialData();
   }, [config.storageKey]);
 
-  const loadInitialData = async () => {
+  const loadInitialData = () => {
     try {
-      // 1. Charger les données locales
-      const localData = localStorage.getItem(config.storageKey);
-      let localState = null;
-      let localTimestamp = 0;
-
-      if (localData) {
-        try {
-          localState = JSON.parse(localData);
-          localTimestamp = localState.lastModified || 0;
-        } catch (error) {
-          console.warn('Données locales corrompues');
-        }
+      const stored = localStorage.getItem(config.storageKey);
+      if (stored) {
+        const data = JSON.parse(stored);
+        restoreState(data);
+      } else {
+        initializeWithDefaults();
       }
-
-      // 2. Vérifier s'il y a une version plus récente dans le cloud
-      const cloudTimestamp = await simpleCloudSync.getCloudTimestamp(config.storageKey);
-      
-      if (cloudTimestamp > localTimestamp) {
-        // Charger depuis le cloud
-        const cloudData = await simpleCloudSync.loadFromCloud(config.storageKey);
-        if (cloudData && cloudData.rows && cloudData.cells) {
-          console.log('📥 Chargement depuis le cloud:', config.storageKey);
-          restoreState(cloudData);
-          // Sauvegarder localement
-          localStorage.setItem(config.storageKey, JSON.stringify(cloudData));
-          return;
-        }
-      }
-
-      // 3. Utiliser les données locales si elles existent et sont valides
-      if (localState && localState.rows && localState.cells) {
-        restoreState(localState);
-        return;
-      }
-
-      // 4. Initialiser par défaut
-      console.log('🔄 Initialisation par défaut:', config.storageKey);
-      initializeWithDefaults();
-
     } catch (error) {
-      console.warn('Erreur lors du chargement initial:', error);
+      console.warn('Erreur lors du chargement:', error);
       initializeWithDefaults();
     }
   };
+
   const initializeWithDefaults = () => {
-    // Structure standardisée pour toutes les progressions (34 lignes au total)
+    // Structure standardisée pour toutes les progressions
     const defaultRows: Row[] = [
       // Période 1 : 7 semaines
       { label: '01', type: 'week' },
@@ -104,7 +72,7 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       { label: '05', type: 'week' },
       { label: '06', type: 'week' },
       { label: '07', type: 'week' },
-      { label: 'Vacances', type: 'vac' }, // ligne 8
+      { label: 'Vacances', type: 'vac' },
       
       // Période 2 : 7 semaines
       { label: '08', type: 'week' },
@@ -114,7 +82,7 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       { label: '12', type: 'week' },
       { label: '13', type: 'week' },
       { label: '14', type: 'week' },
-      { label: 'Vacances', type: 'vac' }, // ligne 16
+      { label: 'Vacances', type: 'vac' },
       
       // Période 3 : 7 semaines
       { label: '15', type: 'week' },
@@ -124,38 +92,7 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       { label: '19', type: 'week' },
       { label: '20', type: 'week' },
       { label: '21', type: 'week' },
-      { label: 'Vacances', type: 'vac' }, // ligne 24
-    // Structure standardisée pour toutes les progressions (34 lignes au total)
-    const defaultRows: Row[] = [
-      // Période 1 : 7 semaines
-      { label: '01', type: 'week' },
-      { label: '02', type: 'week' },
-      { label: '03', type: 'week' },
-      { label: '04', type: 'week' },
-      { label: '05', type: 'week' },
-      { label: '06', type: 'week' },
-      { label: '07', type: 'week' },
-      { label: 'Vacances', type: 'vac' }, // ligne 8
-      
-      // Période 2 : 7 semaines
-      { label: '08', type: 'week' },
-      { label: '09', type: 'week' },
-      { label: '10', type: 'week' },
-      { label: '11', type: 'week' },
-      { label: '12', type: 'week' },
-      { label: '13', type: 'week' },
-      { label: '14', type: 'week' },
-      { label: 'Vacances', type: 'vac' }, // ligne 16
-      
-      // Période 3 : 7 semaines
-      { label: '15', type: 'week' },
-      { label: '16', type: 'week' },
-      { label: '17', type: 'week' },
-      { label: '18', type: 'week' },
-      { label: '19', type: 'week' },
-      { label: '20', type: 'week' },
-      { label: '21', type: 'week' },
-      { label: 'Vacances', type: 'vac' }, // ligne 24
+      { label: 'Vacances', type: 'vac' },
       
       // Période 4 : 9 semaines
       { label: '22', type: 'week' },
@@ -165,8 +102,11 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       { label: '26', type: 'week' },
       { label: '27', type: 'week' },
       { label: '28', type: 'week' },
-      { label: 'Vacances', type: 'vac' }, // ligne 32
-      
+      { label: 'Vacances', type: 'vac' },
+      { label: '29', type: 'week' },
+      { label: '30', type: 'week' }
+    ];
+    
     // Placement des étiquettes selon la progression pédagogique
     const defaultCells: Record<string, string[]> = {};
     
@@ -212,157 +152,21 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     };
     
     localStorage.setItem(config.storageKey, JSON.stringify(state));
-    
-    // Sauvegarder aussi dans le cloud pour les nouveaux utilisateurs
-    simpleCloudSync.saveToCloud(config.storageKey, state).catch(error => {
-      console.warn('Erreur sauvegarde cloud lors de l\'initialisation:', error);
-    });
-    
-    // Sauvegarder aussi dans le cloud pour les nouveaux utilisateurs
-    simpleCloudSync.saveToCloud(config.storageKey, state).catch(error => {
-      console.warn('Erreur sauvegarde cloud lors de l\'initialisation:', error);
-    });
   };
 
   const restoreState = (state: AppState) => {
-    console.log('Restoration des données:', config.storageKey);
-    
-    // Validation et restauration des lignes
     if (state.rows && Array.isArray(state.rows)) {
-      const restoredRows = state.rows.map((r: any, index: number) => {
-        // Forcer la structure standardisée
-        const isVacationRow = [8, 16, 24, 32].includes(index + 1); // lignes 8, 16, 24, 32
-        
-        if (isVacationRow) {
-          return { label: 'Vacances', type: 'vac' as const };
-        } else {
-          // Calculer le numéro de semaine basé sur la position
-          let weekNumber = index + 1;
-          if (index >= 7) weekNumber--; // Après première vacance
-          if (index >= 15) weekNumber--; // Après deuxième vacance  
-          if (index >= 23) weekNumber--; // Après troisième vacance
-          if (index >= 31) weekNumber--; // Après quatrième vacance
-          
-          return { 
-            label: String(weekNumber).padStart(2, '0'), 
-            type: 'week' as const 
-          };
-        }
-      });
-      
-      // S'assurer qu'on a exactement 34 lignes
-      if (restoredRows.length !== 34) {
-        console.warn('Structure de lignes incorrecte, réinitialisation...');
-      const restoredRows = state.rows.map((r: any, index: number) => {
-        // Forcer la structure standardisée
-        const isVacationRow = [8, 16, 24, 32].includes(index + 1); // lignes 8, 16, 24, 32
-        
-        if (isVacationRow) {
-          return { label: 'Vacances', type: 'vac' as const };
-        } else {
-          // Calculer le numéro de semaine basé sur la position
-          let weekNumber = index + 1;
-          if (index >= 7) weekNumber--; // Après première vacance
-          if (index >= 15) weekNumber--; // Après deuxième vacance  
-          if (index >= 23) weekNumber--; // Après troisième vacance
-          if (index >= 31) weekNumber--; // Après quatrième vacance
-          
-          return { 
-            label: String(weekNumber).padStart(2, '0'), 
-            type: 'week' as const 
-          };
-        }
-      });
-      
-      // S'assurer qu'on a exactement 34 lignes
-      if (restoredRows.length !== 34) {
-        console.warn('Structure de lignes incorrecte, réinitialisation...');
-        initializeWithDefaults();
-        return;
-      }
-      
-      setRows(restoredRows);
-    } else {
-      console.warn('Données de lignes invalides, réinitialisation...');
-      initializeWithDefaults();
-      return;
-    } else {
-      console.warn('Données de lignes invalides, réinitialisation...');
-      initializeWithDefaults();
-      return;
+      setRows(state.rows);
     }
 
-    // Validation et restauration des cellules
-    const validCells: Record<string, string[]> = {};
     if (state.cells && typeof state.cells === 'object') {
-      Object.entries(state.cells).forEach(([cellId, chipIds]) => {
-        // Vérifier que l'ID de cellule est valide (r1c1 à r34c2)
-        const cellMatch = cellId.match(/^r(\d+)c([12])$/);
-        if (cellMatch && Array.isArray(chipIds)) {
-          const rowNum = parseInt(cellMatch[1], 10);
-          if (rowNum >= 1 && rowNum <= 34) {
-            validCells[cellId] = chipIds.filter(id => typeof id === 'string' && id.length > 0);
-          }
-        }
-      });
+      setCells(state.cells);
     }
-    setCells(validCells);
 
-    // Validation et restauration de la banque
-    const validBank = Array.isArray(state.bank) ? 
-      state.bank.filter(id => typeof id === 'string' && id.length > 0) : [];
-    setBankChips(validBank);
-
-    // Validation et restauration des étiquettes personnalisées
-    let customChipsMap = { ...config.customLabels };
-    if (state.custom && typeof state.custom === 'object') {
-      Object.entries(state.custom).forEach(([id, label]) => {
-        if (typeof id === 'string' && typeof label === 'string' && id.startsWith('custom-')) {
-          customChipsMap[id] = label;
-        }
-      });
+    if (Array.isArray(state.bank)) {
+      setBankChips(state.bank);
     }
-    setCustomChips(customChipsMap);
-  };
-        const cellMatch = cellId.match(/^r(\d+)c([12])$/);
-        if (cellMatch && Array.isArray(chipIds)) {
-          const rowNum = parseInt(cellMatch[1], 10);
-          if (rowNum >= 1 && rowNum <= 34) {
-            validCells[cellId] = chipIds.filter(id => typeof id === 'string' && id.length > 0);
-          }
-        }
-      });
-    }
-    setCells(validCells);
 
-    // Validation et restauration de la banque
-    const validBank = Array.isArray(state.bank) ? 
-      state.bank.filter(id => typeof id === 'string' && id.length > 0) : [];
-    setBankChips(validBank);
-
-    // Validation et restauration des étiquettes personnalisées
-    let customChipsMap = { ...config.customLabels };
-    if (state.custom && typeof state.custom === 'object') {
-      Object.entries(state.custom).forEach(([id, label]) => {
-        if (typeof id === 'string' && typeof label === 'string' && id.startsWith('custom-')) {
-          customChipsMap[id] = label;
-        }
-      });
-    }
-    setCustomChips(customChipsMap);
-  };
-          validCells[cellId] = chipIds.filter(id => typeof id === 'string' && id.length > 0);
-        }
-      });
-    }
-    setCells(validCells);
-
-    // Handle bank
-    const validBank = Array.isArray(state.bank) ? 
-      state.bank.filter(id => typeof id === 'string' && id.length > 0) : [];
-    setBankChips(validBank);
-
-    // Handle custom chips
     let customChipsMap = { ...config.customLabels };
     if (state.custom && typeof state.custom === 'object') {
       customChipsMap = { ...customChipsMap, ...state.custom };
@@ -392,11 +196,6 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     
     localStorage.setItem(config.storageKey, JSON.stringify(state));
     sharedStateManager.saveToShared(config.storageKey, state);
-    
-    // Sauvegarder dans le cloud en arrière-plan (sans bloquer l'interface)
-    simpleCloudSync.saveToCloud(config.storageKey, state).catch(error => {
-      console.warn('Erreur sauvegarde cloud:', error);
-    });
   };
 
   useEffect(() => {
