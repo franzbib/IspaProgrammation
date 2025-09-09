@@ -125,6 +125,37 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       { label: '20', type: 'week' },
       { label: '21', type: 'week' },
       { label: 'Vacances', type: 'vac' }, // ligne 24
+    // Structure standardisée pour toutes les progressions (34 lignes au total)
+    const defaultRows: Row[] = [
+      // Période 1 : 7 semaines
+      { label: '01', type: 'week' },
+      { label: '02', type: 'week' },
+      { label: '03', type: 'week' },
+      { label: '04', type: 'week' },
+      { label: '05', type: 'week' },
+      { label: '06', type: 'week' },
+      { label: '07', type: 'week' },
+      { label: 'Vacances', type: 'vac' }, // ligne 8
+      
+      // Période 2 : 7 semaines
+      { label: '08', type: 'week' },
+      { label: '09', type: 'week' },
+      { label: '10', type: 'week' },
+      { label: '11', type: 'week' },
+      { label: '12', type: 'week' },
+      { label: '13', type: 'week' },
+      { label: '14', type: 'week' },
+      { label: 'Vacances', type: 'vac' }, // ligne 16
+      
+      // Période 3 : 7 semaines
+      { label: '15', type: 'week' },
+      { label: '16', type: 'week' },
+      { label: '17', type: 'week' },
+      { label: '18', type: 'week' },
+      { label: '19', type: 'week' },
+      { label: '20', type: 'week' },
+      { label: '21', type: 'week' },
+      { label: 'Vacances', type: 'vac' }, // ligne 24
       
       // Période 4 : 9 semaines
       { label: '22', type: 'week' },
@@ -136,11 +167,6 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       { label: '28', type: 'week' },
       { label: 'Vacances', type: 'vac' }, // ligne 32
       
-      // Fin d'année : 2 semaines
-      { label: '29', type: 'week' },
-      { label: '30', type: 'week' }
-    ];
-    
     // Placement des étiquettes selon la progression pédagogique
     const defaultCells: Record<string, string[]> = {};
     
@@ -191,6 +217,11 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     simpleCloudSync.saveToCloud(config.storageKey, state).catch(error => {
       console.warn('Erreur sauvegarde cloud lors de l\'initialisation:', error);
     });
+    
+    // Sauvegarder aussi dans le cloud pour les nouveaux utilisateurs
+    simpleCloudSync.saveToCloud(config.storageKey, state).catch(error => {
+      console.warn('Erreur sauvegarde cloud lors de l\'initialisation:', error);
+    });
   };
 
   const restoreState = (state: AppState) => {
@@ -198,6 +229,30 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     
     // Validation et restauration des lignes
     if (state.rows && Array.isArray(state.rows)) {
+      const restoredRows = state.rows.map((r: any, index: number) => {
+        // Forcer la structure standardisée
+        const isVacationRow = [8, 16, 24, 32].includes(index + 1); // lignes 8, 16, 24, 32
+        
+        if (isVacationRow) {
+          return { label: 'Vacances', type: 'vac' as const };
+        } else {
+          // Calculer le numéro de semaine basé sur la position
+          let weekNumber = index + 1;
+          if (index >= 7) weekNumber--; // Après première vacance
+          if (index >= 15) weekNumber--; // Après deuxième vacance  
+          if (index >= 23) weekNumber--; // Après troisième vacance
+          if (index >= 31) weekNumber--; // Après quatrième vacance
+          
+          return { 
+            label: String(weekNumber).padStart(2, '0'), 
+            type: 'week' as const 
+          };
+        }
+      });
+      
+      // S'assurer qu'on a exactement 34 lignes
+      if (restoredRows.length !== 34) {
+        console.warn('Structure de lignes incorrecte, réinitialisation...');
       const restoredRows = state.rows.map((r: any, index: number) => {
         // Forcer la structure standardisée
         const isVacationRow = [8, 16, 24, 32].includes(index + 1); // lignes 8, 16, 24, 32
@@ -231,6 +286,10 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       console.warn('Données de lignes invalides, réinitialisation...');
       initializeWithDefaults();
       return;
+    } else {
+      console.warn('Données de lignes invalides, réinitialisation...');
+      initializeWithDefaults();
+      return;
     }
 
     // Validation et restauration des cellules
@@ -238,6 +297,33 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     if (state.cells && typeof state.cells === 'object') {
       Object.entries(state.cells).forEach(([cellId, chipIds]) => {
         // Vérifier que l'ID de cellule est valide (r1c1 à r34c2)
+        const cellMatch = cellId.match(/^r(\d+)c([12])$/);
+        if (cellMatch && Array.isArray(chipIds)) {
+          const rowNum = parseInt(cellMatch[1], 10);
+          if (rowNum >= 1 && rowNum <= 34) {
+            validCells[cellId] = chipIds.filter(id => typeof id === 'string' && id.length > 0);
+          }
+        }
+      });
+    }
+    setCells(validCells);
+
+    // Validation et restauration de la banque
+    const validBank = Array.isArray(state.bank) ? 
+      state.bank.filter(id => typeof id === 'string' && id.length > 0) : [];
+    setBankChips(validBank);
+
+    // Validation et restauration des étiquettes personnalisées
+    let customChipsMap = { ...config.customLabels };
+    if (state.custom && typeof state.custom === 'object') {
+      Object.entries(state.custom).forEach(([id, label]) => {
+        if (typeof id === 'string' && typeof label === 'string' && id.startsWith('custom-')) {
+          customChipsMap[id] = label;
+        }
+      });
+    }
+    setCustomChips(customChipsMap);
+  };
         const cellMatch = cellId.match(/^r(\d+)c([12])$/);
         if (cellMatch && Array.isArray(chipIds)) {
           const rowNum = parseInt(cellMatch[1], 10);
