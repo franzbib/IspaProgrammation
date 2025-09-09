@@ -92,8 +92,13 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     // Handle bank
     setBankChips(state.bank || []);
 
-    // Handle custom chips with fallback to config
-    let customChipsMap = { ...config.customLabels, ...(state.custom || {}) };
+    // Handle custom chips with enhanced recovery
+    let customChipsMap = { ...config.customLabels };
+    
+    // Merge existing custom chips from state
+    if (state.custom && typeof state.custom === 'object') {
+      customChipsMap = { ...customChipsMap, ...state.custom };
+    }
     
     // Auto-detect custom chips from cells and bank
     const allChipIds = new Set<string>();
@@ -102,29 +107,37 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     });
     (state.bank || []).forEach((id: string) => allChipIds.add(id));
 
-    // Generate meaningful labels for custom chips without definitions
+    // Generate labels for missing custom chips
     let missingCustomCount = 0;
     let recoveredFromConfig = 0;
     
     allChipIds.forEach(id => {
       if (id.startsWith('custom-')) {
-        if (config.customLabels[id]) {
+        if (config.customLabels[id] && !customChipsMap[id]) {
+          customChipsMap[id] = config.customLabels[id];
           recoveredFromConfig++;
         } else if (!customChipsMap[id]) {
-          // Determine context based on placement
-          let context = 'Étiquette personnalisée';
+          // Try to determine context from placement
+          let context = 'Étiquette';
+          let isTheme = false;
+          let isGrammar = false;
+          
           Object.entries(state.cells || {}).forEach(([cellId, chipIds]) => {
             if (chipIds.includes(id)) {
               if (cellId.endsWith('c1')) {
-                context = 'Thème personnalisé';
+                context = 'Thème';
+                isTheme = true;
               } else if (cellId.endsWith('c2')) {
-                context = 'Point grammatical personnalisé';
+                context = 'Grammaire';
+                isGrammar = true;
               }
             }
           });
           
-          const suffix = id.split('-').slice(-1)[0] || 'inconnu';
-          customChipsMap[id] = `${context} (${suffix})`;
+          // Create a meaningful label
+          const suffix = id.split('-').slice(-1)[0] || Math.random().toString(36).slice(2, 6);
+          const prefix = isTheme ? '🎨' : isGrammar ? '📚' : '🏷️';
+          customChipsMap[id] = `${prefix} ${context} personnalisé (${suffix})`;
           missingCustomCount++;
         }
       }
@@ -132,11 +145,25 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
 
     setCustomChips(customChipsMap);
 
-    // Show recovery message
+    // Show recovery summary
     if (recoveredFromConfig > 0) {
-      alert(`✅ ${recoveredFromConfig} étiquette(s) personnalisée(s) récupérée(s) avec leurs vrais libellés !${missingCustomCount > 0 ? ` ${missingCustomCount} autre(s) étiquette(s) avec libellés par défaut.` : ''}`);
+      console.log(`✅ ${recoveredFromConfig} étiquette(s) récupérée(s) depuis la configuration`);
+    }
+    if (missingCustomCount > 0) {
+      console.log(`⚠️ ${missingCustomCount} étiquette(s) avec libellés générés automatiquement`);
+      
+      // Show user-friendly message
+      setTimeout(() => {
+        alert(`📥 Import terminé !\n\n✅ ${recoveredFromConfig} étiquettes récupérées\n⚠️ ${missingCustomCount} étiquettes avec libellés temporaires\n\n💡 Vous pouvez renommer les étiquettes en cliquant sur l'icône crayon (✎)`);
+      }, 500);
     } else if (missingCustomCount > 0) {
-      alert(`${missingCustomCount} étiquette(s) personnalisée(s) importée(s) avec des libellés par défaut. Vous pouvez les renommer en cliquant sur l'icône crayon.`);
+      setTimeout(() => {
+        alert(`📥 Import terminé !\n\n⚠️ ${missingCustomCount} étiquettes avec libellés temporaires générés.\n\n💡 Cliquez sur l'icône crayon (✎) pour les renommer.`);
+      }, 500);
+    } else if (recoveredFromConfig === 0 && missingCustomCount === 0) {
+      setTimeout(() => {
+        alert('✅ Import terminé avec succès !');
+      }, 500);
     }
   };
 
