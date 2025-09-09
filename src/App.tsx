@@ -148,10 +148,7 @@ const customLabels: Record<string, string> = {
   'custom-mf56elbt-lzcg': 'VIE QUOTIDIENNE',
   'custom-mf56nt3h-tqs3': 'CONSOMMATION RESPONSABLE',
   'custom-mf56nzx2-2rut': 'VIE EN SOCIETE',
-  'custom-mf57jrn4-3c6s': 'LES FETES ET LES CELEBRATIONS FRANCAISES',
-  'custom-mf57jvug-ojm9': 'LES ARTS',
-  'custom-mf57k01r-7iir': 'LE ROMANTISME',
-  'custom-mf57k5tq-h2ds': 'LA FRANCOPHONIE',
+    const themeIndex = parseInt(chipId.split('-')[1], 10);
   'custom-mf57msdx-gmrs': 'LE BIEN-ETRE',
   'custom-mf57myaz-4a3r': 'LES TEMPS LIBRES',
   'custom-mf57n5ym-rhu4': 'LE TOURISME DANS LES HAUTS DE FRANCE',
