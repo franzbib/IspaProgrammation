@@ -302,20 +302,6 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     restoreState(progressionData);
   };
 
-  const initializeDefault = () => {
-    const defaultRows: Row[] = [];
-    for (let i = 1; i <= 50; i++) {
-      defaultRows.push({
-        label: String(i).padStart(2, '0'),
-        type: 'week'
-      });
-    }
-    setRows(defaultRows);
-    setCells({});
-    setBankChips([]);
-    setCustomChips({});
-  };
-
   const restoreState = (state: any) => {
     // Handle rows
     if (state.rows && Array.isArray(state.rows)) {
