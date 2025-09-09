@@ -712,6 +712,7 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
         draggable={!isReadOnly}
         onDragStart={!isReadOnly ? () => handleDragStart(chipId) : undefined}
         onDragEnd={!isReadOnly ? handleDragEnd : undefined}
+        onDoubleClick={!isReadOnly ? () => returnToBank(chipId) : undefined}
         style={isReadOnly ? { cursor: 'default' } : {}}
       >
         <span className="handle"></span>
