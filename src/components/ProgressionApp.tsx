@@ -324,7 +324,7 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     }
     
     if (chipId.startsWith('theme-')) {
-      const themeIndex = parseInt(chipId.split('-')[1], 10) - 1;
+      const themeIndex = parseInt(chipId.split('-')[1], 10);
       return config.themes[themeIndex] || `Thème ${themeIndex + 1}`;
     }
     
