@@ -43,15 +43,22 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
 
   // Initialize with 50 empty rows
   useEffect(() => {
+    console.log('🔍 useEffect initialization - config:', config.storageKey);
+    console.log('🔍 Config custom labels available:', !!config.customLabels);
+    console.log('🔍 Config custom labels count:', Object.keys(config.customLabels || {}).length);
+    
     const savedState = localStorage.getItem(config.storageKey);
     if (savedState) {
       try {
         const state = JSON.parse(savedState);
+        console.log('🔍 Found saved state, calling restoreState');
         restoreState(state);
       } catch {
+        console.log('🔍 Error parsing saved state, initializing default');
         initializeDefault();
       }
     } else {
+      console.log('🔍 No saved state, initializing default');
       initializeDefault();
     }
   }, [config.storageKey]);
@@ -75,6 +82,7 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     console.log('🔍 DEBUT restoreState - state reçu:', state);
     console.log('🔍 Config actuelle:', config);
     console.log('🔍 Custom labels dans config:', config.customLabels);
+    console.log('🔍 Nombre de custom labels dans config:', Object.keys(config.customLabels || {}).length);
     
     // Handle rows
     if (state.rows && Array.isArray(state.rows)) {
@@ -106,6 +114,7 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     if (config.customLabels && typeof config.customLabels === 'object') {
       customChipsMap = { ...config.customLabels };
       console.log('🔍 Custom labels copiés depuis config:', Object.keys(customChipsMap).length);
+      console.log('🔍 Premiers custom labels:', Object.keys(customChipsMap).slice(0, 5));
     }
     
     // Merge existing custom chips from state if present
@@ -126,7 +135,9 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     }
     
     console.log('🔍 Tous les chip IDs trouvés:', Array.from(allChipIds));
-    console.log('🔍 Custom chip IDs:', Array.from(allChipIds).filter(id => id.startsWith('custom-')));
+    const customChipIds = Array.from(allChipIds).filter(id => id.startsWith('custom-'));
+    console.log('🔍 Custom chip IDs:', customChipIds);
+    console.log('🔍 Nombre de custom chip IDs:', customChipIds.length);
 
     // Count recovery statistics
     let recoveredFromConfig = 0;
@@ -169,8 +180,9 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
       }
     });
 
+    console.log('🔍 Custom chips map final size:', Object.keys(customChipsMap).length);
+    console.log('🔍 Custom chips map keys sample:', Object.keys(customChipsMap).slice(0, 10));
     setCustomChips(customChipsMap);
-    console.log('🔍 Custom chips final:', customChipsMap);
 
     // Show detailed recovery summary
     console.log(`📊 Import Summary:
@@ -429,7 +441,14 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     console.log('🔍 getChipLabel appelé pour:', chipId);
     
     if (chipId.startsWith('custom-')) {
-      const label = customChips[chipId] || config.customLabels?.[chipId] || 'Étiquette personnalisée';
+      let label = customChips[chipId];
+      if (!label && config.customLabels) {
+        label = config.customLabels[chipId];
+      }
+      if (!label) {
+        label = 'Étiquette personnalisée';
+        console.warn('🔍 Aucun label trouvé pour:', chipId);
+      }
       console.log('🔍 Custom chip label:', chipId, '->', label);
       return label;
     }
