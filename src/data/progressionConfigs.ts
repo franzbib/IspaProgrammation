@@ -86,7 +86,7 @@ const customLabelsB1B2: Record<string, string> = {
   'custom-mf57nptz-4qqw': 'LES FRANCAIS ET LES VACANCES',
   'custom-mf57oayk-gp18': 'LA NATURE : LES DIFFERENTS VISAGES DE LA FRANCE',
   'custom-mf57oef1-dk4i': 'VIVRE A AMIENS',
-  'custom-mf57oiwo-l79z': 'ETRE JEUNE EN FRANCE'
+  'custom-mf57oiwo-l79z': 'ETRE JEUNE EN FRANCE',
   'custom-mf56elbt-lzcg': 'VIE QUOTIDIENNE',
   'custom-mf56nt3h-tqs3': 'CONSOMMATION RESPONSABLE',
   'custom-mf56nzx2-2rut': 'VIE EN SOCIETE',
