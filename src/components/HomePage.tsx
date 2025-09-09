@@ -1,9 +1,13 @@
 import React from 'react';
 import { BookOpen, Users, Globe, Award, MapPin, Phone, Mail, ExternalLink, Calendar, GraduationCap, Building2 } from 'lucide-react';
+import OfflineExportPanel from './OfflineExportPanel';
 
 export default function HomePage() {
   return (
     <div className="max-w-6xl mx-auto space-y-12">
+      {/* Offline Export Panel */}
+      <OfflineExportPanel />
+      
       {/* Hero Section */}
       <section className="text-center bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/30 p-12">
         <div className="mb-8">
