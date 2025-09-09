@@ -148,7 +148,6 @@ const customLabels: Record<string, string> = {
   'custom-mf56elbt-lzcg': 'VIE QUOTIDIENNE',
   'custom-mf56nt3h-tqs3': 'CONSOMMATION RESPONSABLE',
   'custom-mf56nzx2-2rut': 'VIE EN SOCIETE',
-    const themeIndex = parseInt(chipId.split('-')[1], 10);
   'custom-mf57msdx-gmrs': 'LE BIEN-ETRE',
   'custom-mf57myaz-4a3r': 'LES TEMPS LIBRES',
   'custom-mf57n5ym-rhu4': 'LE TOURISME DANS LES HAUTS DE FRANCE',
