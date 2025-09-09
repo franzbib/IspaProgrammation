@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Calendar, FileDown, FileUp, FileText, Printer, RotateCcw, Trash2 } from 'lucide-react';
 import { sharedStateManager } from '../utils/sharedState';
+import { progressionConfigs } from '../data/progressionConfigs';
 
 interface Row {
   label: string;

@@ -1,3 +1,5 @@
+import React from 'react';
+
 // Système de sauvegarde partagée pour que les modifications soient visibles par tous les utilisateurs
 export interface SharedStateManager {
   saveToShared: (key: string, data: any) => void;
