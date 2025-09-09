@@ -1,4 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import HomePage from './components/HomePage';
+import Navigation from './components/Navigation';
+import ProgressionApp from './components/ProgressionApp';
+import { progressionConfigs } from './data/progressionConfigs';
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState('home');
 
