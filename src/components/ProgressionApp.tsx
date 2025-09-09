@@ -92,51 +92,63 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
     // Handle bank
     setBankChips(state.bank || []);
 
-    // Handle custom chips with enhanced recovery
-    let customChipsMap = { ...config.customLabels };
+    // Handle custom chips with COMPLETE recovery from config
+    let customChipsMap = {};
     
-    // Merge existing custom chips from state
+    // Start with ALL custom labels from config (B1→B2 has many predefined)
+    if (config.customLabels && typeof config.customLabels === 'object') {
+      customChipsMap = { ...config.customLabels };
+    }
+    
+    // Merge existing custom chips from state if present
     if (state.custom && typeof state.custom === 'object') {
       customChipsMap = { ...customChipsMap, ...state.custom };
     }
     
-    // Auto-detect custom chips from cells and bank
+    // Collect all chip IDs used in the progression
     const allChipIds = new Set<string>();
     Object.values(state.cells || {}).forEach((chipIds: string[]) => {
-      chipIds.forEach(id => allChipIds.add(id));
+      if (Array.isArray(chipIds)) {
+        chipIds.forEach(id => allChipIds.add(id));
+      }
     });
-    (state.bank || []).forEach((id: string) => allChipIds.add(id));
+    if (Array.isArray(state.bank)) {
+      state.bank.forEach((id: string) => allChipIds.add(id));
+    }
 
-    // Generate labels for missing custom chips
-    let missingCustomCount = 0;
+    // Count recovery statistics
     let recoveredFromConfig = 0;
+    let missingCustomCount = 0;
     
+    // Process all custom chips found
     allChipIds.forEach(id => {
       if (id.startsWith('custom-')) {
-        if (config.customLabels[id] && !customChipsMap[id]) {
-          customChipsMap[id] = config.customLabels[id];
+        if (config.customLabels && config.customLabels[id]) {
+          // Found in config - count as recovered
+          if (!customChipsMap[id]) {
+            customChipsMap[id] = config.customLabels[id];
+          }
           recoveredFromConfig++;
         } else if (!customChipsMap[id]) {
-          // Try to determine context from placement
+          // Not found anywhere - generate a temporary label
           let context = 'Étiquette';
-          let isTheme = false;
-          let isGrammar = false;
+          let prefix = '🏷️';
           
+          // Try to determine context from placement
           Object.entries(state.cells || {}).forEach(([cellId, chipIds]) => {
-            if (chipIds.includes(id)) {
+            if (Array.isArray(chipIds) && chipIds.includes(id)) {
               if (cellId.endsWith('c1')) {
                 context = 'Thème';
-                isTheme = true;
+                prefix = '🎨';
               } else if (cellId.endsWith('c2')) {
                 context = 'Grammaire';
-                isGrammar = true;
+                prefix = '📚';
               }
             }
           });
           
-          // Create a meaningful label
+          // Create a meaningful temporary label
           const suffix = id.split('-').slice(-1)[0] || Math.random().toString(36).slice(2, 6);
-          const prefix = isTheme ? '🎨' : isGrammar ? '📚' : '🏷️';
           customChipsMap[id] = `${prefix} ${context} personnalisé (${suffix})`;
           missingCustomCount++;
         }
@@ -145,26 +157,25 @@ export default function ProgressionApp({ config }: ProgressionAppProps) {
 
     setCustomChips(customChipsMap);
 
-    // Show recovery summary
-    if (recoveredFromConfig > 0) {
-      console.log(`✅ ${recoveredFromConfig} étiquette(s) récupérée(s) depuis la configuration`);
-    }
-    if (missingCustomCount > 0) {
-      console.log(`⚠️ ${missingCustomCount} étiquette(s) avec libellés générés automatiquement`);
-      
-      // Show user-friendly message
-      setTimeout(() => {
-        alert(`📥 Import terminé !\n\n✅ ${recoveredFromConfig} étiquettes récupérées\n⚠️ ${missingCustomCount} étiquettes avec libellés temporaires\n\n💡 Vous pouvez renommer les étiquettes en cliquant sur l'icône crayon (✎)`);
-      }, 500);
-    } else if (missingCustomCount > 0) {
-      setTimeout(() => {
+    // Show detailed recovery summary
+    console.log(`📊 Import Summary:
+      - Total custom chips found: ${Array.from(allChipIds).filter(id => id.startsWith('custom-')).length}
+      - Recovered from config: ${recoveredFromConfig}
+      - Generated temporary labels: ${missingCustomCount}
+      - Config has ${Object.keys(config.customLabels || {}).length} predefined labels`);
+
+    // Show user-friendly message
+    setTimeout(() => {
+      if (recoveredFromConfig > 0 && missingCustomCount > 0) {
+        alert(`📥 Import terminé !\n\n✅ ${recoveredFromConfig} étiquettes récupérées depuis la configuration\n⚠️ ${missingCustomCount} étiquettes avec libellés temporaires\n\n💡 Cliquez sur l'icône crayon (✎) pour renommer les étiquettes temporaires.`);
+      } else if (recoveredFromConfig > 0) {
+        alert(`✅ Import réussi !\n\n${recoveredFromConfig} étiquettes récupérées avec leurs libellés originaux.`);
+      } else if (missingCustomCount > 0) {
         alert(`📥 Import terminé !\n\n⚠️ ${missingCustomCount} étiquettes avec libellés temporaires générés.\n\n💡 Cliquez sur l'icône crayon (✎) pour les renommer.`);
-      }, 500);
-    } else if (recoveredFromConfig === 0 && missingCustomCount === 0) {
-      setTimeout(() => {
+      } else {
         alert('✅ Import terminé avec succès !');
-      }, 500);
-    }
+      }
+    }, 500);
   };
 
   const saveState = () => {
