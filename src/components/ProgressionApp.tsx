@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Calendar, FileDown, FileUp, FileText, Printer, RotateCcw, Trash2 } from 'lucide-react';
 import { sharedStateManager } from '../utils/sharedState';
+import { cloudSyncManager } from '../utils/cloudSync';
 
 interface Row {
   label: string;
@@ -37,6 +38,7 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
   const [bankChips, setBankChips] = useState<string[]>([]);
   const [customChips, setCustomChips] = useState<Record<string, string>>({});
   const [draggedChip, setDraggedChip] = useState<string | null>(null);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initialize with 50 empty rows
@@ -366,6 +368,11 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     
     localStorage.setItem(config.storageKey, JSON.stringify(state));
     sharedStateManager.saveToShared(config.storageKey, state);
+    
+    // Sauvegarder dans le cloud en arrière-plan
+    cloudSyncManager.saveToCloud(config.storageKey, state).catch(error => {
+      console.warn('Erreur sauvegarde cloud:', error);
+    });
   };
 
   useEffect(() => {
@@ -374,6 +381,59 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
 
   // Subscribe to shared changes
   useEffect(() => {
+    // Charger depuis le cloud au démarrage
+    const loadFromCloud = async () => {
+      setIsCloudSyncing(true);
+      try {
+        const cloudData = await cloudSyncManager.loadFromCloud(config.storageKey);
+        if (cloudData) {
+          const localData = localStorage.getItem(config.storageKey);
+          let shouldUpdate = true;
+          
+          if (localData) {
+            try {
+              const local = JSON.parse(localData);
+              shouldUpdate = cloudData.lastModified > (local.lastModified || 0);
+            } catch (error) {
+              console.warn('Erreur comparaison données:', error);
+            }
+          }
+          
+          if (shouldUpdate) {
+            restoreState(cloudData);
+          }
+        }
+      } catch (error) {
+        console.warn('Erreur chargement cloud:', error);
+      } finally {
+        setIsCloudSyncing(false);
+      }
+    };
+
+    loadFromCloud();
+
+    // S'abonner aux changements cloud
+    const unsubscribeCloud = cloudSyncManager.subscribeToCloudChanges(config.storageKey, (cloudData) => {
+      const currentData = localStorage.getItem(config.storageKey);
+      let shouldUpdate = true;
+      
+      if (currentData) {
+        try {
+          const localData = JSON.parse(currentData);
+          if (localData.lastModified && cloudData.lastModified) {
+            shouldUpdate = cloudData.lastModified > localData.lastModified;
+          }
+        } catch (error) {
+          console.warn('Erreur lors de la comparaison des données:', error);
+        }
+      }
+      
+      if (shouldUpdate) {
+        restoreState(cloudData);
+      }
+    });
+
+    // S'abonner aux changements locaux (pour compatibilité)
     const unsubscribe = sharedStateManager.subscribeToChanges(config.storageKey, (sharedData) => {
       const currentData = localStorage.getItem(config.storageKey);
       let shouldUpdate = true;
@@ -394,7 +454,10 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       }
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      unsubscribeCloud();
+    };
   }, [config.storageKey]);
 
   const createCustomChip = () => {
@@ -764,6 +827,34 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
             <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
               <p className="text-sm text-blue-700">
                 <strong>Mode consultation :</strong> Vous visualisez la dernière version sauvegardée.
+              </p>
+            </div>
+          )}
+          
+          {/* Indicateur de synchronisation cloud */}
+          {isCloudSyncing && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl">
+              <p className="text-sm text-green-700 flex items-center gap-2">
+                <span className="animate-spin">🔄</span>
+                <strong>Synchronisation cloud en cours...</strong>
+              </p>
+            </div>
+          )}
+          
+          {!isCloudSyncing && cloudSyncManager.isOnline() && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl">
+              <p className="text-sm text-green-700 flex items-center gap-2">
+                <span>☁️</span>
+                <strong>Synchronisation cloud active</strong> - Vos modifications sont automatiquement partagées
+              </p>
+            </div>
+          )}
+          
+          {!cloudSyncManager.isOnline() && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl">
+              <p className="text-sm text-yellow-700 flex items-center gap-2">
+                <span>📱</span>
+                <strong>Mode hors ligne</strong> - Les modifications seront synchronisées à la reconnexion
               </p>
             </div>
           )}

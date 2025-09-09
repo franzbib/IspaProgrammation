@@ -1,6 +1,7 @@
 import React from 'react';
 import { BookOpen, Users, Globe, Award, MapPin, Phone, Mail, ExternalLink, Calendar, GraduationCap, Building2 } from 'lucide-react';
 import OfflineExportPanel from './OfflineExportPanel';
+import CloudSyncPanel from './CloudSyncPanel';
 
 export default function HomePage() {
   return (
@@ -369,6 +370,9 @@ export default function HomePage() {
 
       {/* Offline Export Panel */}
       <OfflineExportPanel />
+      
+      {/* Cloud Sync Panel */}
+      <CloudSyncPanel />
     </div>
   );
 }
