@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Plus, Calendar, FileDown, FileUp, FileText, Printer, RotateCcw, Trash2 } from 'lucide-react';
 import { sharedStateManager } from '../utils/sharedState';
-import { cloudSyncManager } from '../utils/cloudSync';
 
 interface Row {
   label: string;
@@ -14,6 +13,8 @@ interface AppState {
   cells: Record<string, string[]>;
   bank: string[];
   custom: Record<string, string>;
+  lastModified?: number;
+  deviceId?: string;
 }
 
 export interface ProgressionConfig {
@@ -38,23 +39,21 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
   const [bankChips, setBankChips] = useState<string[]>([]);
   const [customChips, setCustomChips] = useState<Record<string, string>>({});
   const [draggedChip, setDraggedChip] = useState<string | null>(null);
-  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize with 50 empty rows
+  // Initialize with default data
   useEffect(() => {
     const savedState = localStorage.getItem(config.storageKey);
     if (savedState) {
       try {
         const state = JSON.parse(savedState);
-        // Vérifier la validité des données avant de les restaurer
         if (state.version && state.rows && Array.isArray(state.rows) && state.cells) {
           restoreState(state);
         } else {
           console.warn('Données corrompues détectées, initialisation par défaut');
           initializeWithDefaults();
         }
-      } catch {
+      } catch (error) {
         console.warn('Erreur de parsing, initialisation par défaut');
         initializeWithDefaults();
       }
@@ -64,16 +63,7 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
   }, [config.storageKey]);
 
   const initializeWithDefaults = () => {
-    if (config.storageKey === 'progA2B1') {
-      initializeA2B1WithData();
-    } else {
-      initializeDefault();
-    }
-  };
-
-  const initializeA2B1WithData = () => {
-    // Créer 30 semaines + 4 périodes de vacances
-    const newRows: Row[] = [
+    const defaultRows: Row[] = [
       { label: '01', type: 'week' }, { label: '02', type: 'week' }, { label: '03', type: 'week' },
       { label: '04', type: 'week' }, { label: '05', type: 'week' }, { label: '06', type: 'week' },
       { label: '07', type: 'week' }, { label: 'Vacances', type: 'vac' },
@@ -89,229 +79,60 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       { label: '29', type: 'week' }, { label: '30', type: 'week' }
     ];
     
-    // Créer les cellules avec thèmes et grammaire
-    const newCells: Record<string, string[]> = {
-      // Semaine 1 - Les loisirs
-      'r1c1': ['theme-0'],
-      'r1c2': ['chip-0', 'chip-1', 'chip-2'],
-      
-      // Semaine 2 - La gastronomie  
-      'r2c1': ['theme-1'],
-      'r2c2': ['chip-3', 'chip-4', 'chip-5'],
-      
-      // Semaine 3 - La littérature
-      'r3c1': ['theme-2'],
-      'r3c2': ['chip-6', 'chip-7', 'chip-8'],
-      
-      // Semaine 4 - Les études supérieures
-      'r4c1': ['theme-3'],
-      'r4c2': ['chip-9', 'chip-10', 'chip-11'],
-      
-      // Semaine 5 - Réussir sa candidature
-      'r5c1': ['theme-4'],
-      'r5c2': ['chip-12', 'chip-13', 'chip-14'],
-      
-      // Semaine 6 - Le cinéma
-      'r6c1': ['theme-5'],
-      'r6c2': ['chip-15', 'chip-16', 'chip-17'],
-      
-      // Semaine 7 - Le sport
-      'r7c1': ['theme-6'],
-      'r7c2': ['chip-18', 'chip-19', 'chip-20'],
-      
-      // Semaine 8 - La santé (après vacances)
-      'r9c1': ['theme-7'],
-      'r9c2': ['chip-21', 'chip-22', 'chip-23'],
-      
-      // Semaine 9 - Les médecines alternatives
-      'r10c1': ['theme-8'],
-      'r10c2': ['chip-24', 'chip-25', 'chip-26'],
-      
-      // Semaine 10 - Le commerce et l'économie
-      'r11c1': ['theme-9'],
-      'r11c2': ['chip-27', 'chip-28', 'chip-29'],
-      
-      // Semaine 11 - Le tourisme
-      'r12c1': ['theme-10'],
-      'r12c2': ['chip-30', 'chip-31', 'chip-32'],
-      
-      // Semaine 12 - Le logement
-      'r13c1': ['theme-11'],
-      'r13c2': ['chip-33', 'chip-34', 'chip-35'],
-      
-      // Semaine 13 - L'écologie
-      'r14c1': ['theme-12'],
-      'r14c2': ['chip-36', 'chip-37', 'chip-38'],
-      
-      // Semaine 14 - Les transports propres (après vacances)
-      'r16c1': ['theme-13'],
-      'r16c2': ['chip-39', 'chip-40', 'chip-41'],
-      
-      // Semaine 15 - La vie associative
-      'r17c1': ['theme-14'],
-      'r17c2': ['chip-42', 'chip-43', 'chip-44'],
-      
-      // Semaine 16 - Liberté, Égalité, Fraternité
-      'r18c1': ['theme-15'],
-      'r18c2': ['chip-45', 'chip-46', 'chip-47'],
-      
-      // Semaine 17 - La parité
-      'r19c1': ['theme-16'],
-      'r19c2': ['chip-48', 'chip-49', 'chip-50'],
-      
-      // Semaine 18 - Les grands repères historiques
-      'r20c1': ['theme-17'],
-      'r20c2': ['chip-51', 'chip-52', 'chip-53'],
-      
-      // Semaine 19 - Le système politique
-      'r21c1': ['theme-18'],
-      'r21c2': ['chip-54', 'chip-55', 'chip-56'],
-      
-      // Semaine 20 - Le monde numérique (après vacances)
-      'r24c1': ['theme-19'],
-      'r24c2': ['chip-57', 'chip-58', 'chip-59'],
-      
-      // Semaine 21 - Les médias
-      'r25c1': ['theme-20'],
-      'r25c2': ['chip-60', 'chip-61', 'chip-62'],
-      
-      // Semaine 22 - L'analyse d'une œuvre d'art
-      'r26c1': ['theme-21'],
-      'r26c2': ['chip-63', 'chip-64', 'chip-65'],
-      
-      // Semaine 23 - La météo et le changement climatique
-      'r27c1': ['theme-22'],
-      'r27c2': ['chip-66', 'chip-67', 'chip-68'],
-      
-      // Semaine 24 - Le monde professionnel (après vacances)
-      'r32c1': ['theme-23'],
-      'r32c2': ['chip-69', 'chip-70', 'chip-71'],
-      
-      // Semaine 25 - Les clichés
-      'r33c1': ['theme-24'],
-      'r33c2': ['chip-72', 'chip-73', 'chip-74'],
-      
-      // Semaine 26 - L'enquête
-      'r34c1': ['theme-25'],
-      'r34c2': ['chip-75', 'chip-76', 'chip-77'],
-      
-      // Semaine 27 - La musique
-      'r35c1': ['theme-26'],
-      'r35c2': ['chip-78', 'chip-79', 'chip-80'],
-      
-      // Semaine 28 - Le système scolaire
-      'r36c1': ['theme-27'],
-      'r36c2': ['chip-81', 'chip-82', 'chip-83'],
-      
-      // Semaine 29 - La mode
-      'r37c1': ['theme-28'],
-      'r37c2': ['chip-84', 'chip-85', 'chip-86'],
-      
-      // Semaine 30 - L'accès à la culture
-      'r38c1': ['theme-29'],
-      'r38c2': ['chip-87', 'chip-88', 'chip-89']
+    const defaultCells: Record<string, string[]> = {
+      'r1c1': ['theme-0'], 'r1c2': ['chip-0', 'chip-1', 'chip-2'],
+      'r2c1': ['theme-1'], 'r2c2': ['chip-3', 'chip-4', 'chip-5'],
+      'r3c1': ['theme-2'], 'r3c2': ['chip-6', 'chip-7', 'chip-8'],
+      'r4c1': ['theme-3'], 'r4c2': ['chip-9', 'chip-10', 'chip-11'],
+      'r5c1': ['theme-4'], 'r5c2': ['chip-12', 'chip-13', 'chip-14'],
+      'r6c1': ['theme-5'], 'r6c2': ['chip-15', 'chip-16', 'chip-17'],
+      'r7c1': ['theme-6'], 'r7c2': ['chip-18', 'chip-19', 'chip-20'],
+      'r9c1': ['theme-7'], 'r9c2': ['chip-21', 'chip-22', 'chip-23'],
+      'r10c1': ['theme-8'], 'r10c2': ['chip-24', 'chip-25', 'chip-26'],
+      'r11c1': ['theme-9'], 'r11c2': ['chip-27', 'chip-28', 'chip-29'],
+      'r12c1': ['theme-10'], 'r12c2': ['chip-30', 'chip-31', 'chip-32'],
+      'r13c1': ['theme-11'], 'r13c2': ['chip-33', 'chip-34', 'chip-35'],
+      'r14c1': ['theme-12'], 'r14c2': ['chip-36', 'chip-37', 'chip-38'],
+      'r16c1': ['theme-13'], 'r16c2': ['chip-39', 'chip-40', 'chip-41'],
+      'r17c1': ['theme-14'], 'r17c2': ['chip-42', 'chip-43', 'chip-44'],
+      'r18c1': ['theme-15'], 'r18c2': ['chip-45', 'chip-46', 'chip-47'],
+      'r19c1': ['theme-16'], 'r19c2': ['chip-48', 'chip-49'],
+      'r20c1': ['theme-17'], 'r20c2': ['chip-50', 'chip-51'],
+      'r21c1': ['theme-18'], 'r21c2': ['chip-52', 'chip-53'],
+      'r25c1': ['theme-19'], 'r25c2': ['chip-54', 'chip-55'],
+      'r26c1': ['theme-20'], 'r26c2': ['chip-56', 'chip-57'],
+      'r27c1': ['theme-21'], 'r27c2': ['chip-58', 'chip-59'],
+      'r28c1': ['theme-22'], 'r28c2': ['chip-60', 'chip-61'],
+      'r30c1': ['theme-23'], 'r30c2': ['chip-62', 'chip-63'],
+      'r33c1': ['theme-24'], 'r33c2': ['chip-64', 'chip-65'],
+      'r34c1': ['theme-25'], 'r34c2': ['chip-66', 'chip-67'],
+      'r35c1': ['theme-26'], 'r35c2': ['chip-68', 'chip-69'],
+      'r36c1': ['theme-27'], 'r36c2': ['chip-70', 'chip-71'],
+      'r37c1': ['theme-28'], 'r37c2': ['chip-72', 'chip-73'],
+      'r38c1': ['theme-29'], 'r38c2': ['chip-74', 'chip-75']
     };
     
-    setRows(newRows);
-    setCells(newCells);
+    setRows(defaultRows);
+    setCells(defaultCells);
     setBankChips([]);
-    setCustomChips({});
+    setCustomChips(config.customLabels || {});
     
     // Sauvegarder immédiatement
-    const state = {
+    const state: AppState = {
       version: 3,
-      rows: newRows,
-      cells: newCells,
+      rows: defaultRows,
+      cells: defaultCells,
       bank: [],
-      custom: {},
-      lastModified: Date.now()
+      custom: config.customLabels || {},
+      lastModified: Date.now(),
+      deviceId: getDeviceId()
     };
     
     localStorage.setItem(config.storageKey, JSON.stringify(state));
-    sharedStateManager.saveToShared(config.storageKey, state);
   };
 
-  const initializeDefault = () => {
-    const progressionData = {
-      version: 3,
-      rows: [
-        { label: '01', type: 'week' },
-        { label: '02', type: 'week' },
-        { label: '03', type: 'week' },
-        { label: '04', type: 'week' },
-        { label: '05', type: 'week' },
-        { label: '06', type: 'week' },
-        { label: '07', type: 'week' },
-        { label: 'Vacances', type: 'vac' },
-        { label: '08', type: 'week' },
-        { label: '09', type: 'week' },
-        { label: '10', type: 'week' },
-        { label: '11', type: 'week' },
-        { label: '12', type: 'week' },
-        { label: '13', type: 'week' },
-        { label: '14', type: 'week' },
-        { label: 'Vacances', type: 'vac' },
-        { label: '15', type: 'week' },
-        { label: '16', type: 'week' },
-        { label: '17', type: 'week' },
-        { label: '18', type: 'week' },
-        { label: '19', type: 'week' },
-        { label: '20', type: 'week' },
-        { label: '21', type: 'week' },
-        { label: 'Vacances', type: 'vac' },
-        { label: '22', type: 'week' },
-        { label: '23', type: 'week' },
-        { label: '24', type: 'week' },
-        { label: '25', type: 'week' },
-        { label: '26', type: 'week' },
-        { label: '27', type: 'week' },
-        { label: '28', type: 'week' },
-        { label: 'Vacances', type: 'vac' },
-        { label: '29', type: 'week' },
-        { label: '30', type: 'week' }
-      ],
-      cells: {
-        'r1c1': ['theme-0'], 'r1c2': ['chip-0', 'chip-1', 'chip-2'],
-        'r2c1': ['theme-1'], 'r2c2': ['chip-3', 'chip-4', 'chip-5'],
-        'r3c1': ['theme-2'], 'r3c2': ['chip-6', 'chip-7', 'chip-8'],
-        'r4c1': ['theme-3'], 'r4c2': ['chip-9', 'chip-10', 'chip-11'],
-        'r5c1': ['theme-4'], 'r5c2': ['chip-12', 'chip-13', 'chip-14'],
-        'r6c1': ['theme-5'], 'r6c2': ['chip-15', 'chip-16', 'chip-17'],
-        'r7c1': ['theme-6'], 'r7c2': ['chip-18', 'chip-19', 'chip-20'],
-        'r9c1': ['theme-7'], 'r9c2': ['chip-21', 'chip-22', 'chip-23'],
-        'r10c1': ['theme-8'], 'r10c2': ['chip-24', 'chip-25', 'chip-26'],
-        'r11c1': ['theme-9'], 'r11c2': ['chip-27', 'chip-28', 'chip-29'],
-        'r12c1': ['theme-10'], 'r12c2': ['chip-30', 'chip-31', 'chip-32'],
-        'r13c1': ['theme-11'], 'r13c2': ['chip-33', 'chip-34', 'chip-35'],
-        'r14c1': ['theme-12'], 'r14c2': ['chip-36', 'chip-37', 'chip-38'],
-        'r16c1': ['theme-13'], 'r16c2': ['chip-39', 'chip-40', 'chip-41'],
-        'r17c1': ['theme-14'], 'r17c2': ['chip-42', 'chip-43', 'chip-44'],
-        'r18c1': ['theme-15'], 'r18c2': ['chip-45', 'chip-46', 'chip-47'],
-        'r19c1': ['theme-16'], 'r19c2': ['chip-48', 'chip-49'],
-        'r20c1': ['theme-17'], 'r20c2': ['chip-50', 'chip-51'],
-        'r21c1': ['theme-18'], 'r21c2': ['chip-52', 'chip-53'],
-        'r25c1': ['theme-19'], 'r25c2': ['chip-54', 'chip-55'],
-        'r26c1': ['theme-20'], 'r26c2': ['chip-56', 'chip-57'],
-        'r27c1': ['theme-21'], 'r27c2': ['chip-58', 'chip-59'],
-        'r28c1': ['theme-22'], 'r28c2': ['chip-60', 'chip-61'],
-        'r30c1': ['theme-23'], 'r30c2': ['chip-62', 'chip-63'],
-        'r33c1': ['theme-24'], 'r33c2': ['chip-64', 'chip-65'],
-        'r34c1': ['theme-25'], 'r34c2': ['chip-66', 'chip-67'],
-        'r35c1': ['theme-26'], 'r35c2': ['chip-68', 'chip-69'],
-        'r36c1': ['theme-27'], 'r36c2': ['chip-70', 'chip-71'],
-        'r37c1': ['theme-28'], 'r37c2': ['chip-72', 'chip-73'],
-        'r38c1': ['theme-29'], 'r38c2': ['chip-74', 'chip-75']
-      },
-      bank: [],
-      custom: {},
-      lastModified: Date.now()
-    };
-    
-    restoreState(progressionData);
-  };
-
-  const restoreState = (state: any) => {
-    console.log('Restoration des données:', config.storageKey, state);
+  const restoreState = (state: AppState) => {
+    console.log('Restoration des données:', config.storageKey);
     
     // Handle rows
     if (state.rows && Array.isArray(state.rows)) {
@@ -320,16 +141,11 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
         type: r.label === 'Vacances' ? 'vac' : (r.type === 'vac' ? 'vac' : 'week')
       }));
       setRows(restoredRows);
-    } else {
-      console.warn('Rows invalides, initialisation par défaut');
-      initializeWithDefaults();
-      return;
     }
 
     // Handle cells
-    const validCells = {};
+    const validCells: Record<string, string[]> = {};
     if (state.cells && typeof state.cells === 'object') {
-      // Nettoyer les cellules pour s'assurer qu'elles sont valides
       Object.entries(state.cells).forEach(([cellId, chipIds]) => {
         if (Array.isArray(chipIds)) {
           validCells[cellId] = chipIds.filter(id => typeof id === 'string' && id.length > 0);
@@ -343,45 +159,21 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       state.bank.filter(id => typeof id === 'string' && id.length > 0) : [];
     setBankChips(validBank);
 
-    // Handle custom chips - merge with config
-    let customChipsMap = {};
-    
-    // Start with config custom labels
-    if (config.customLabels && typeof config.customLabels === 'object') {
-      customChipsMap = { ...config.customLabels };
-    }
-    
-    // Merge with saved custom chips
+    // Handle custom chips
+    let customChipsMap = { ...config.customLabels };
     if (state.custom && typeof state.custom === 'object') {
       customChipsMap = { ...customChipsMap, ...state.custom };
     }
-    
-    // Find all custom chip IDs used in the progression
-    const allChipIds = new Set<string>();
-    Object.values(validCells).forEach((chipIds: string[]) => {
-      if (Array.isArray(chipIds)) {
-        chipIds.forEach(id => allChipIds.add(id));
-      }
-    });
-    if (Array.isArray(validBank)) {
-      validBank.forEach((id: string) => allChipIds.add(id));
-    }
-    
-    // Generate temporary labels for missing custom chips
-    allChipIds.forEach(id => {
-      if (id.startsWith('custom-') && !customChipsMap[id]) {
-        customChipsMap[id] = `Étiquette personnalisée (${id.split('-').slice(-1)[0]})`;
-      }
-    });
-
     setCustomChips(customChipsMap);
-    
-    console.log('État restauré avec succès:', {
-      rows: restoredRows.length,
-      cells: Object.keys(validCells).length,
-      bank: validBank.length,
-      custom: Object.keys(customChipsMap).length
-    });
+  };
+
+  const getDeviceId = () => {
+    let deviceId = localStorage.getItem('deviceId');
+    if (!deviceId) {
+      deviceId = `device-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem('deviceId', deviceId);
+    }
+    return deviceId;
   };
 
   const saveState = () => {
@@ -395,24 +187,8 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       deviceId: getDeviceId()
     };
     
-    console.log('Sauvegarde de l\'état:', config.storageKey, {
-      rows: rows.length,
-      cells: Object.keys(cells).length,
-      bank: bankChips.length,
-      custom: Object.keys(customChips).length
-    });
-    
     localStorage.setItem(config.storageKey, JSON.stringify(state));
     sharedStateManager.saveToShared(config.storageKey, state);
-  };
-
-  const getDeviceId = () => {
-    let deviceId = localStorage.getItem('deviceId');
-    if (!deviceId) {
-      deviceId = `device-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      localStorage.setItem('deviceId', deviceId);
-    }
-    return deviceId;
   };
 
   useEffect(() => {
@@ -421,19 +197,15 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
 
   // Subscribe to shared changes
   useEffect(() => {
-    // S'abonner aux changements locaux (pour compatibilité)
     const unsubscribe = sharedStateManager.subscribeToChanges(config.storageKey, (sharedData) => {
       const currentData = localStorage.getItem(config.storageKey);
       let shouldUpdate = true;
-      
-      console.log('Changement détecté:', config.storageKey, sharedData);
       
       if (currentData) {
         try {
           const localData = JSON.parse(currentData);
           if (localData.lastModified && sharedData.lastModified) {
             shouldUpdate = sharedData.lastModified > localData.lastModified;
-            console.log('Comparaison timestamps:', localData.lastModified, 'vs', sharedData.lastModified, '→', shouldUpdate);
           }
         } catch (error) {
           console.warn('Erreur lors de la comparaison des données:', error);
@@ -441,14 +213,11 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
       }
       
       if (shouldUpdate) {
-        console.log('Mise à jour des données depuis le partage');
         restoreState(sharedData);
       }
     });
 
-    return () => {
-      unsubscribe();
-    };
+    return unsubscribe;
   }, [config.storageKey]);
 
   const createCustomChip = () => {
@@ -513,20 +282,6 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
     });
     
     setCells(newCells);
-    
-    // Renumber weeks after moving
-    renumberWeeks(newRows);
-  };
-
-  const renumberWeeks = (rowsToRenumber: Row[]) => {
-    let weekCounter = 1;
-    const updatedRows = rowsToRenumber.map(row => {
-      if (row.type === 'week') {
-        return { ...row, label: String(weekCounter++).padStart(2, '0') };
-      }
-      return row;
-    });
-    setRows(updatedRows);
   };
 
   const handleDragStart = (chipId: string) => {
@@ -745,7 +500,7 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
 
   const resetAll = () => {
     if (confirm('Réinitialiser et supprimer toutes les données ?')) {
-      initializeDefault();
+      initializeWithDefaults();
       localStorage.removeItem(config.storageKey);
     }
   };
@@ -821,8 +576,6 @@ export default function ProgressionApp({ config, isReadOnly = false }: Progressi
               </p>
             </div>
           )}
-          
-          {/* Indicateur de synchronisation cloud */}
           
           {/* Search */}
           <div className="relative mb-4">
